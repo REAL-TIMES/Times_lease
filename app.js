@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.2.4 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.2.4';
+// ── TIMES 임대 매물 관리 v1.2.5 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.2.5';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -68,25 +68,30 @@ const floorLabel = ls => {
   return ls.floor+'층'+(ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : '');
 };
 
-// ── 비교표 컬럼 (층은 헤더에 표시) ──
+// ── 비교표 컬럼 ──
 const CMP_COLS = [
-  { l:'전용면적',        f:ls => ls.exclusivePy ? ls.exclusivePy+'평'+(py2m(ls.exclusivePy)?' ('+py2m(ls.exclusivePy)+'㎡)':'') : '—' },
-  { l:'계약면적',        f:ls => ls.contractPy  ? ls.contractPy+'평'+(py2m(ls.contractPy)?' ('+py2m(ls.contractPy)+'㎡)':'')   : '—' },
-  { l:'보증금',          f:ls => fmt(ls.deposit) },
-  { l:'임대료/월',       f:ls => fmt(ls.rent) },
-  { l:'관리비/월',       f:ls => fmt(ls.mgmtFee) },
-  { l:'월 합계',         f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
-  { l:'NOC (전용평)',    f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
-                                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
-  { l:'임대료/평(계약)', f:ls => fmtPy(ls.rent,    ls.contractPy) },
-  { l:'관리비/평(계약)', f:ls => fmtPy(ls.mgmtFee, ls.contractPy) },
-  { l:'보증금/평(계약)', f:ls => fmtPy(ls.deposit,  ls.contractPy) },
-  { l:'주차',            f:ls => ls.parking    || '—' },
-  { l:'승강기', always:true, f:ls => ls.elevator || '—' },
-  { l:'입주일정',        f:ls => ls.moveIn     || '—' },
-  { l:'사용승인',        f:ls => ls.useAprDate || '—' },
-  { l:'렌트프리',        f:ls => ls.rentFree   || '—' },
-  { l:'핏아웃',          f:ls => ls.fitOut     || '—' },
+  // ── 📐 면적 ──
+  { l:'전용면적',        sec:'📐 면적',        f:ls => ls.exclusivePy ? ls.exclusivePy+'평'+(py2m(ls.exclusivePy)?' ('+py2m(ls.exclusivePy)+'㎡)':'') : '—' },
+  { l:'계약면적',                              f:ls => ls.contractPy  ? ls.contractPy+'평'+(py2m(ls.contractPy)?' ('+py2m(ls.contractPy)+'㎡)':'')   : '—' },
+  // ── 💰 임대 조건 ──
+  { l:'보증금',          sec:'💰 임대 조건',   f:ls => fmt(ls.deposit) },
+  { l:'임대료/월',                             f:ls => fmt(ls.rent) },
+  { l:'관리비/월',                             f:ls => fmt(ls.mgmtFee) },
+  { l:'월 합계',         hi:true,              f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
+  // ── 📊 단가 분석 ──
+  { l:'NOC/전용평',      sec:'📊 단가 분석',   f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
+                                                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
+  { l:'임대료/평(계약)',                        f:ls => fmtPy(ls.rent,    ls.contractPy) },
+  { l:'관리비/평(계약)',                        f:ls => fmtPy(ls.mgmtFee, ls.contractPy) },
+  { l:'보증금/평(계약)',                        f:ls => fmtPy(ls.deposit,  ls.contractPy) },
+  // ── 📅 입주 조건 ──
+  { l:'입주가능일',      sec:'📅 입주 조건',   f:ls => ls.moveIn     || '—' },
+  { l:'렌트프리',                              f:ls => ls.rentFree   || '—' },
+  { l:'핏아웃',                               f:ls => ls.fitOut     || '—' },
+  // ── 🏢 건물 정보 ──
+  { l:'주차',            sec:'🏢 건물 정보',   f:ls => ls.parking    || '—' },
+  { l:'승강기',          always:true,          f:ls => ls.elevator   || '—' },
+  { l:'사용승인',                              f:ls => ls.useAprDate || '—' },
 ];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -428,7 +433,7 @@ function ListingForm({ init, onSave, onClose }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.2.4 레이아웃 개선) ──
+// ── 매물 카드 (v1.2.5 레이아웃 개선) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCard({ ls, onEdit, onDelete, onToggle }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
@@ -547,7 +552,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 ──
+// ── 비교표 v1.2.5 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -559,16 +564,28 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   const chunks = [];
   for (let i=0; i<sel.length; i+=CHUNK) chunks.push(sel.slice(i,i+CHUNK));
 
-  const thS = {background:'#0d1b2a',color:'#f7f4ef',padding:'6pt 8pt',border:'1px solid #0d1b2a',fontSize:'8pt',fontWeight:600,verticalAlign:'middle',textAlign:'left'};
-  const plS = {background:'#ede9e1',padding:'4pt 6pt',color:'#444',fontWeight:700,border:'1px solid #ccc8c0',fontSize:'8pt',textAlign:'center',whiteSpace:'nowrap',verticalAlign:'middle'};
-  const tdS = s => ({padding:'4pt 6pt',border:'1px solid #ccc8c0',fontSize:'8pt',textAlign:'center',background:s?'#faf8f4':'white',verticalAlign:'middle'});
-  let stripe = false;
+  // ── 스타일 ──
+  const labelColW = '72pt';
+  const dataColW  = '130pt';
+
+  const thS  = {background:'#0d1b2a',color:'#f7f4ef',padding:'8pt 6pt',border:'1px solid #0d1b2a',verticalAlign:'middle',textAlign:'center'};
+  const plS  = {background:'#ede9e1',padding:'4pt 6pt',color:'#444',fontWeight:600,border:'1px solid #ccc8c0',fontSize:'7.5pt',textAlign:'center',whiteSpace:'nowrap',verticalAlign:'middle'};
+  const secS = {background:'#1a2f48',color:'#c9a84c',fontSize:'6.5pt',fontWeight:700,padding:'3pt 8pt',letterSpacing:'.12em',border:'1px solid #0d1b2a'};
+  const tdS  = (s,hi) => ({
+    padding:'4pt 6pt',border:'1px solid #ccc8c0',fontSize: hi?'9pt':'7.5pt',
+    fontWeight:hi?700:400, textAlign:'center', verticalAlign:'middle',
+    background: hi?'#fff8ec':(s?'#faf8f4':'white'),
+    color: hi?'#8a4800':'inherit',
+  });
+  const plShi = {...plS, background:'#fff0d0', color:'#8a4800', fontWeight:700};
 
   return (
     <>
       {chunks.map((chunk, ci) => (
         <div key={ci} className="print-only"
           style={{pageBreakBefore:ci>0?'always':'auto',breakBefore:ci>0?'page':'auto'}}>
+
+          {/* 헤더 */}
           <div style={{borderBottom:'1.5pt solid #0d1b2a',paddingBottom:'6pt',marginBottom:'8pt',display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
             <div>
               <div style={{fontSize:'7pt',letterSpacing:'.12em',color:'#c9a84c'}}>TIMES REAL ESTATE · 타임즈부동산중개</div>
@@ -580,40 +597,67 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </div>
           </div>
 
-          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:(80+chunk.length*130)+'pt',maxWidth:'100%'}}>
+          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
             <colgroup>
-              <col style={{width:'80pt'}} />
-              {chunk.map(l=><col key={l.id} style={{width:'130pt'}} />)}
+              <col style={{width:labelColW}} />
+              {chunk.map(l=><col key={l.id} style={{width:dataColW}} />)}
             </colgroup>
             <thead>
               <tr>
-                <th style={{...plS,background:'#0d1b2a',color:'#c9a84c'}}>항목</th>
+                <th style={{...thS,background:'#0d1b2a',borderRight:'1px solid #c9a84c'}}></th>
                 {chunk.map(l=>(
-                  <th key={l.id} className="ptk" style={{...thS,textAlign:'center'}}>
-                    <div style={{fontWeight:700,fontSize:'9pt',marginBottom:'2pt'}}>{l.buildingName||'(이름없음)'}</div>
-                    {l.floor && <div style={{fontSize:'7pt',color:'#c9a84c'}}>{floorLabel(l)}</div>}
-                    {l.address && <div style={{fontSize:'7pt',color:'#aaa',fontWeight:400,lineHeight:1.3}}>
-                      {(() => { const m=l.address.match(/^(.*?[동읍면리가로길])\s+(.+)$/); return m ? <>{m[1]}<br/>{m[2]}</> : l.address; })()}
-                    </div>}
+                  <th key={l.id} style={thS}>
+                    {/* 건물명 */}
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'11pt',fontWeight:700,lineHeight:1.15,marginBottom:'4pt',color:'white'}}>
+                      {l.buildingName||'(이름없음)'}
+                    </div>
+                    {/* 층 */}
+                    {l.floor && (
+                      <div style={{display:'inline-block',background:'rgba(201,168,76,0.25)',color:'#c9a84c',fontSize:'7.5pt',fontWeight:700,padding:'1.5pt 7pt',letterSpacing:'.04em'}}>
+                        {l.floor}층{l.totalFloor?' / 총 '+l.totalFloor+'층':''}
+                      </div>
+                    )}
                   </th>
                 ))}
               </tr>
+              {/* 주소 행 — 헤더 바로 아래 */}
+              {chunk.some(l=>l.address) && (
+                <tr>
+                  <td style={{...plS,background:'#162438',color:'#c9a84c',fontSize:'6.5pt',letterSpacing:'.08em'}}>주소</td>
+                  {chunk.map(l=>(
+                    <td key={l.id} style={{padding:'3pt 6pt',background:'#1e3450',color:'#aac4e0',fontSize:'7pt',textAlign:'center',border:'1px solid #0d1b2a',lineHeight:1.4,verticalAlign:'middle'}}>
+                      {l.address || '—'}
+                    </td>
+                  ))}
+                </tr>
+              )}
             </thead>
             <tbody>
-              {CMP_COLS.map(col => {
-                stripe = !stripe;
-                const hasVal = col.always || chunk.some(l => { const v=col.f(l); return v&&v!=='—'; });
-                if (!hasVal) return null;
-                return (
-                  <tr key={col.l}>
-                    <td style={plS}>{col.l}</td>
-                    {chunk.map(l=><td key={l.id} style={tdS(stripe)}>{col.f(l)}</td>)}
-                  </tr>
-                );
-              })}
+              {(function(){
+                var s = false;
+                return CMP_COLS.map(function(col){
+                  var hasVal = col.always || chunk.some(function(l){ var v=col.f(l); return v&&v!=='—'; });
+                  if (!hasVal) return null;
+                  s = !s;
+                  return (
+                    <React.Fragment key={col.l}>
+                      {col.sec && (
+                        <tr>
+                          <td colSpan={chunk.length+1} style={secS}>{col.sec}</td>
+                        </tr>
+                      )}
+                      <tr>
+                        <td style={col.hi ? plShi : plS}>{col.l}</td>
+                        {chunk.map(function(l){ return <td key={l.id} style={tdS(s,col.hi)}>{col.f(l)}</td>; })}
+                      </tr>
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </tbody>
           </table>
 
+          {/* 하단 정보 */}
           <div style={{marginTop:'10pt',borderTop:'0.8pt solid #c9a84c',paddingTop:'5pt',fontSize:'7.5pt',color:'#555',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{display:'flex',alignItems:'center',gap:'6pt'}}>
               {logoSrc && <img src={logoSrc} style={{height:'16pt',objectFit:'contain'}} />}
@@ -628,36 +672,56 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
         </div>
       ))}
 
+      {/* ── 화면 미리보기 ── */}
       <div className="screen-only" style={{overflowX:'auto'}}>
-        <table style={{borderCollapse:'collapse',minWidth:'600px',fontSize:'12px'}}>
+        <table style={{borderCollapse:'collapse',minWidth:'500px',fontSize:'12px'}}>
           <thead>
             <tr>
               <th style={{background:'#0d1b2a',color:'#c9a84c',padding:'8px 10px',textAlign:'left',whiteSpace:'nowrap',minWidth:'80px'}}>항목</th>
               {sel.map(l=>(
-                <th key={l.id} style={{background:'#0d1b2a',color:'white',padding:'8px 10px',textAlign:'center',minWidth:'130px'}}>
-                  <div style={{fontWeight:700}}>{l.buildingName}</div>
-                  {l.floor && <div style={{fontSize:'10px',color:'#c9a84c'}}>{floorLabel(l)}</div>}
+                <th key={l.id} style={{background:'#0d1b2a',color:'white',padding:'8px 10px',textAlign:'center',minWidth:'140px'}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'15px',fontWeight:700}}>{l.buildingName}</div>
+                  {l.floor && <div style={{fontSize:'11px',color:'#c9a84c',marginTop:'2px'}}>{l.floor}층{l.totalFloor?' / 총 '+l.totalFloor+'층':''}</div>}
+                  {l.address && <div style={{fontSize:'10px',color:'#aaa',fontWeight:400,marginTop:'2px'}}>{l.address}</div>}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {CMP_COLS.map((col,i) => {
-              const hasVal = col.always || sel.some(l=>{const v=col.f(l);return v&&v!=='—';});
-              if (!hasVal) return null;
-              return (
-                <tr key={col.l}>
-                  <td style={{padding:'6px 10px',background:'#f0ede6',fontWeight:600,fontSize:'11px',whiteSpace:'nowrap'}}>{col.l}</td>
-                  {sel.map(l=><td key={l.id} style={{padding:'6px 10px',textAlign:'center',borderBottom:'1px solid #f0ede6',background:i%2===0?'white':'#fafaf8'}}>{col.f(l)}</td>)}
-                </tr>
-              );
-            })}
+            {(function(){
+              var idx = 0;
+              return CMP_COLS.map(function(col){
+                var hasVal = col.always || sel.some(function(l){ var v=col.f(l); return v&&v!=='—'; });
+                if (!hasVal) return null;
+                idx++;
+                return (
+                  <React.Fragment key={col.l}>
+                    {col.sec && (
+                      <tr>
+                        <td colSpan={sel.length+1} style={{background:'#1a2f48',color:'#c9a84c',fontSize:'10px',fontWeight:700,padding:'5px 10px',letterSpacing:'.1em'}}>
+                          {col.sec}
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td style={{padding:'6px 10px',background:col.hi?'#fff0d0':'#f0ede6',fontWeight:col.hi?700:600,fontSize:'11px',whiteSpace:'nowrap',color:col.hi?'#8a4800':'#444'}}>{col.l}</td>
+                      {sel.map(function(l){ return (
+                        <td key={l.id} style={{padding:'6px 10px',textAlign:'center',borderBottom:'1px solid #f0ede6',background:col.hi?'#fff8ec':(idx%2===0?'white':'#fafaf8'),fontWeight:col.hi?700:400,color:col.hi?'#8a4800':'inherit',fontSize:col.hi?'13px':'12px'}}>
+                          {col.f(l)}
+                        </td>
+                      ); })}
+                    </tr>
+                  </React.Fragment>
+                );
+              });
+            })()}
           </tbody>
         </table>
       </div>
     </>
   );
 }
+
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 리포트 카드 ──
