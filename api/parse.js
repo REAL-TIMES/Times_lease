@@ -1,4 +1,4 @@
-// ── TIMES 임대 매물 관리 v1.2.1 (Supabase + 네이버 자동입력) ──
+// ── /api/parse.js v1.2.2 — Anthropic API 프록시 (Vercel 서버리스) ──
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-3-haiku-20240307',
         max_tokens: 800,
         messages: [{ role: 'user', content: prompt }]
       })
@@ -48,7 +48,10 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      const msg = (data.error && data.error.message) ? data.error.message : 'Anthropic API 오류 ' + upstream.status;
+      // 전체 에러 정보를 상세히 반환
+      const msg = (data.error && data.error.message)
+        ? '[' + (data.error.type || upstream.status) + '] ' + data.error.message
+        : 'Anthropic API 오류 ' + upstream.status;
       return res.status(upstream.status).json({ error: msg });
     }
 
