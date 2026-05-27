@@ -1,4 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.2.0 (Supabase + 네이버 자동입력) ──
+// ── TIMES 임대 매물 관리 v1.2.2 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.2.2';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -905,7 +906,10 @@ function App() {
       <header className="no-print" style={{background:'#0d1b2a',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div>
           <div style={{fontSize:'8px',letterSpacing:'.2em',color:'#c9a84c'}}>TIMES REAL ESTATE</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',color:'white',fontWeight:400}}>임대 매물 관리</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',color:'white',fontWeight:400}}>
+            임대 매물 관리
+            <span style={{fontSize:'10px',color:'#c9a84c',marginLeft:'8px',fontFamily:'inherit',fontWeight:300,letterSpacing:'.05em'}}>{APP_VERSION}</span>
+          </div>
         </div>
         <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
           {loading && <span style={{fontSize:'11px',color:'#c9a84c'}}>⏳ 동기화 중…</span>}
