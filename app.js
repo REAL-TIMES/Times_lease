@@ -87,65 +87,24 @@ const CMP_COLS = [
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 네이버 텍스트 파싱 모달 (신규) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function NaverParseModal({ apiKey, onParsed, onClose }) {
+function NaverParseModal({ onParsed, onClose }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState('');
 
   const parse = async () => {
     if (!text.trim()) { setErr('텍스트를 붙여넣어 주세요'); return; }
-    if (!apiKey || !apiKey.trim()) {
-      setErr('Anthropic API Key가 설정되지 않았습니다. 출력 정보 설정에서 입력해주세요.');
-      return;
-    }
     setBusy(true); setErr('');
     try {
-      const prompt = '다음은 네이버 부동산 또는 상업용 부동산 플랫폼에서 복사한 매물 정보입니다.\n'
-        + '아래 텍스트에서 다음 필드를 추출해서 JSON 객체로만 답하세요. 설명, 마크다운 코드블록 모두 없이 JSON만 출력하세요.\n\n'
-        + '필드 설명:\n'
-        + '- buildingName: 건물명 (없으면 빈 문자열)\n'
-        + '- address: 주소 전체 (없으면 빈 문자열)\n'
-        + '- floor: 해당 층 숫자만 (예: "3", 총층 정보 제외)\n'
-        + '- exclusivePy: 전용면적 평수 숫자만, 소수점 2자리 (㎡ 단위면 3.30579로 나누어 변환)\n'
-        + '- contractPy: 계약/공급면적 평수 숫자만, 소수점 2자리 (동일 변환)\n'
-        + '- deposit: 보증금 만원 단위 정수 문자열 (예: 2억=20000, 5000만원=5000)\n'
-        + '- rent: 월세/임대료 만원 단위 정수 문자열\n'
-        + '- mgmtFee: 관리비 만원 단위 정수 문자열\n'
-        + '- parking: 주차 정보 (예: "가능 (11대)", 없으면 빈 문자열)\n'
-        + '- elevator: 승강기 정보 (없으면 빈 문자열)\n'
-        + '- moveIn: 입주가능일 문자열 (예: "즉시입주 협의 가능", 없으면 빈 문자열)\n'
-        + '- useAprDate: 사용승인일/준공연월 (예: "1989.12", 없으면 빈 문자열)\n'
-        + '- notes: 기타 참고사항 (화장실 수, 향, 연층 여부 등 나머지 정보, 없으면 빈 문자열)\n\n'
-        + '숫자 필드는 단위 없이 숫자 문자열만. JSON만 출력.\n\n'
-        + '매물 텍스트:\n' + text;
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/parse', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey.trim(),
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-request-proxy': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 800,
-          messages: [{ role: 'user', content: prompt }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim() })
       });
 
-      if (!res.ok) {
-        let msg = 'API 오류 ' + res.status;
-        try { const ed = await res.json(); if (ed.error) msg = ed.error.message; } catch(e2) {}
-        throw new Error(msg);
-      }
-
       const data = await res.json();
-      const raw  = data.content[0].text.trim();
-      // 코드블록 펜스 제거 후 파싱
-      const clean = raw.replace(/^```[a-z]*\n?/,'').replace(/```$/,'').trim();
-      const parsed = JSON.parse(clean);
-      onParsed(parsed);
+      if (!res.ok) throw new Error(data.error || 'API 오류 ' + res.status);
+      onParsed(data);
     } catch(e) {
       setErr('파싱 실패: ' + (e.message || String(e)));
     } finally { setBusy(false); }
@@ -281,7 +240,7 @@ function SBSetup({ onConnect }) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 입력 폼 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function ListingForm({ init, onSave, onClose, apiKey }) {
+function ListingForm({ init, onSave, onClose }) {
   const [ls, setLs]          = useState(init || blank());
   const [busy, setBusy]      = useState(false);
   const [showNaver, setShowNaver] = useState(false);
@@ -339,7 +298,6 @@ function ListingForm({ init, onSave, onClose, apiKey }) {
     <>
       {showNaver && (
         <NaverParseModal
-          apiKey={apiKey}
           onParsed={handleParsed}
           onClose={() => setShowNaver(false)}
         />
@@ -810,7 +768,7 @@ function InfoPanel({ info, setInfo, onDisconnect }) {
     <div style={{borderTop:'1px solid #e0dcd4',marginTop:'8px',paddingTop:'8px'}}>
       <div onClick={()=>setOpen(!open)}
         style={{cursor:'pointer',fontSize:'11px',color:'#888',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span>{open?'▲':'▼'} 출력 정보 설정 (상호·담당자·로고·API Key)</span>
+        <span>{open?'▲':'▼'} 출력 정보 설정 (상호·담당자·로고)</span>
         <button onClick={e=>{e.stopPropagation();if(confirm('Supabase 연결을 해제하시겠습니까?'))onDisconnect();}}
           style={{fontSize:'10px',padding:'2px 8px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>연결 해제</button>
       </div>
@@ -836,24 +794,7 @@ function InfoPanel({ info, setInfo, onDisconnect }) {
             </div>
           </div>
 
-          {/* ── Anthropic API Key 섹션 ── */}
-          <div style={{borderTop:'1px solid #e8e4dc',paddingTop:'12px'}}>
-            <div style={{fontSize:'11px',fontWeight:600,color:'#1a3a6e',marginBottom:'6px'}}>✨ 네이버 자동 입력용 Anthropic API Key</div>
-            <div style={{marginBottom:'6px'}}>
-              <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>API Key</div>
-              <input
-                value={info.anthropicKey||''}
-                placeholder="sk-ant-api03-..."
-                type="password"
-                onChange={e=>f('anthropicKey',e.target.value)}
-                style={{width:'100%',fontSize:'11px',padding:'5px 7px',border:'1px solid #b8d0f5',fontFamily:'monospace'}}
-              />
-            </div>
-            <div style={{fontSize:'10px',color:'#aaa',lineHeight:1.7}}>
-              Anthropic Console (<strong>console.anthropic.com</strong>) → API Keys에서 발급.<br/>
-              이 기기 브라우저에만 저장되며 외부로 전송되지 않습니다.
-            </div>
-          </div>
+          {/* ── Anthropic API Key 섹션 제거 — Vercel 환경변수로 관리 ── */}
         </div>
       )}
     </div>
@@ -872,7 +813,7 @@ function App() {
   const [dbReady,   setDbReady]   = useState(false);
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
-    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'', anthropicKey:'',
+    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
     ...loadInfo()
   }));
   const [reportTitle, setRT] = useState('');
@@ -958,7 +899,6 @@ function App() {
           init={editing}
           onSave={onSave}
           onClose={()=>{setShowForm(false);setEditing(null);}}
-          apiKey={info.anthropicKey}
         />
       )}
 
