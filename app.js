@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.2.3 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.2.3';
+// ── TIMES 임대 매물 관리 v1.2.4 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.2.4';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -68,9 +68,8 @@ const floorLabel = ls => {
   return ls.floor+'층'+(ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : '');
 };
 
-// ── 비교표 컬럼 ──
+// ── 비교표 컬럼 (층은 헤더에 표시) ──
 const CMP_COLS = [
-  { l:'층',              f:ls => floorLabel(ls) },
   { l:'전용면적',        f:ls => ls.exclusivePy ? ls.exclusivePy+'평'+(py2m(ls.exclusivePy)?' ('+py2m(ls.exclusivePy)+'㎡)':'') : '—' },
   { l:'계약면적',        f:ls => ls.contractPy  ? ls.contractPy+'평'+(py2m(ls.contractPy)?' ('+py2m(ls.contractPy)+'㎡)':'')   : '—' },
   { l:'보증금',          f:ls => fmt(ls.deposit) },
@@ -83,7 +82,7 @@ const CMP_COLS = [
   { l:'관리비/평(계약)', f:ls => fmtPy(ls.mgmtFee, ls.contractPy) },
   { l:'보증금/평(계약)', f:ls => fmtPy(ls.deposit,  ls.contractPy) },
   { l:'주차',            f:ls => ls.parking    || '—' },
-  { l:'승강기',          f:ls => ls.elevator   || '—' },
+  { l:'승강기', always:true, f:ls => ls.elevator || '—' },
   { l:'입주일정',        f:ls => ls.moveIn     || '—' },
   { l:'사용승인',        f:ls => ls.useAprDate || '—' },
   { l:'렌트프리',        f:ls => ls.rentFree   || '—' },
@@ -429,7 +428,7 @@ function ListingForm({ init, onSave, onClose }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.2.3 레이아웃 개선) ──
+// ── 매물 카드 (v1.2.4 레이아웃 개선) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCard({ ls, onEdit, onDelete, onToggle }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
@@ -581,10 +580,10 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </div>
           </div>
 
-          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:'100%'}}>
+          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:(80+chunk.length*130)+'pt',maxWidth:'100%'}}>
             <colgroup>
-              <col style={{width:'75pt'}} />
-              {chunk.map(l=><col key={l.id} style={{width:'auto'}} />)}
+              <col style={{width:'80pt'}} />
+              {chunk.map(l=><col key={l.id} style={{width:'130pt'}} />)}
             </colgroup>
             <thead>
               <tr>
@@ -603,7 +602,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             <tbody>
               {CMP_COLS.map(col => {
                 stripe = !stripe;
-                const hasVal = chunk.some(l => { const v=col.f(l); return v&&v!=='—'; });
+                const hasVal = col.always || chunk.some(l => { const v=col.f(l); return v&&v!=='—'; });
                 if (!hasVal) return null;
                 return (
                   <tr key={col.l}>
@@ -644,7 +643,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
           </thead>
           <tbody>
             {CMP_COLS.map((col,i) => {
-              const hasVal = sel.some(l=>{const v=col.f(l);return v&&v!=='—';});
+              const hasVal = col.always || sel.some(l=>{const v=col.f(l);return v&&v!=='—';});
               if (!hasVal) return null;
               return (
                 <tr key={col.l}>
