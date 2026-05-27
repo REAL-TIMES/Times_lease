@@ -1,4 +1,4 @@
-// ── /api/parse.js — Anthropic API 프록시 (Vercel 서버리스) ──
+// ── TIMES 임대 매물 관리 v1.2.1 (Supabase + 네이버 자동입력) ──
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
