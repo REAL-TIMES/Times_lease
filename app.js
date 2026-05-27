@@ -1,4 +1,4 @@
-// ── TIMES 임대 매물 관리 v1.1.0 (Supabase) ──
+// ── TIMES 임대 매물 관리 v1.2.0 (Supabase + 네이버 자동입력) ──
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -85,6 +85,133 @@ const CMP_COLS = [
 ];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 네이버 텍스트 파싱 모달 (신규) ──
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function NaverParseModal({ apiKey, onParsed, onClose }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err,  setErr]  = useState('');
+
+  const parse = async () => {
+    if (!text.trim()) { setErr('텍스트를 붙여넣어 주세요'); return; }
+    if (!apiKey || !apiKey.trim()) {
+      setErr('Anthropic API Key가 설정되지 않았습니다. 출력 정보 설정에서 입력해주세요.');
+      return;
+    }
+    setBusy(true); setErr('');
+    try {
+      const prompt = '다음은 네이버 부동산 또는 상업용 부동산 플랫폼에서 복사한 매물 정보입니다.\n'
+        + '아래 텍스트에서 다음 필드를 추출해서 JSON 객체로만 답하세요. 설명, 마크다운 코드블록 모두 없이 JSON만 출력하세요.\n\n'
+        + '필드 설명:\n'
+        + '- buildingName: 건물명 (없으면 빈 문자열)\n'
+        + '- address: 주소 전체 (없으면 빈 문자열)\n'
+        + '- floor: 해당 층 숫자만 (예: "3", 총층 정보 제외)\n'
+        + '- exclusivePy: 전용면적 평수 숫자만, 소수점 2자리 (㎡ 단위면 3.30579로 나누어 변환)\n'
+        + '- contractPy: 계약/공급면적 평수 숫자만, 소수점 2자리 (동일 변환)\n'
+        + '- deposit: 보증금 만원 단위 정수 문자열 (예: 2억=20000, 5000만원=5000)\n'
+        + '- rent: 월세/임대료 만원 단위 정수 문자열\n'
+        + '- mgmtFee: 관리비 만원 단위 정수 문자열\n'
+        + '- parking: 주차 정보 (예: "가능 (11대)", 없으면 빈 문자열)\n'
+        + '- elevator: 승강기 정보 (없으면 빈 문자열)\n'
+        + '- moveIn: 입주가능일 문자열 (예: "즉시입주 협의 가능", 없으면 빈 문자열)\n'
+        + '- useAprDate: 사용승인일/준공연월 (예: "1989.12", 없으면 빈 문자열)\n'
+        + '- notes: 기타 참고사항 (화장실 수, 향, 연층 여부 등 나머지 정보, 없으면 빈 문자열)\n\n'
+        + '숫자 필드는 단위 없이 숫자 문자열만. JSON만 출력.\n\n'
+        + '매물 텍스트:\n' + text;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey.trim(),
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-request-proxy': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 800,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!res.ok) {
+        let msg = 'API 오류 ' + res.status;
+        try { const ed = await res.json(); if (ed.error) msg = ed.error.message; } catch(e2) {}
+        throw new Error(msg);
+      }
+
+      const data = await res.json();
+      const raw  = data.content[0].text.trim();
+      // 코드블록 펜스 제거 후 파싱
+      const clean = raw.replace(/^```[a-z]*\n?/,'').replace(/```$/,'').trim();
+      const parsed = JSON.parse(clean);
+      onParsed(parsed);
+    } catch(e) {
+      setErr('파싱 실패: ' + (e.message || String(e)));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.88)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
+      <div style={{background:'white',width:'100%',maxWidth:'580px',padding:'24px',boxShadow:'0 8px 40px rgba(0,0,0,0.3)'}}>
+
+        {/* 헤더 */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'16px',borderBottom:'2px solid #0d1b2a',paddingBottom:'12px'}}>
+          <div>
+            <div style={{fontSize:'8px',letterSpacing:'.2em',color:'#c9a84c',marginBottom:'4px'}}>NAVER LISTING IMPORT</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a'}}>네이버 매물 자동 입력</div>
+            <div style={{fontSize:'11px',color:'#888',marginTop:'3px'}}>매물 페이지 텍스트를 붙여넣으면 AI가 자동으로 분석합니다</div>
+          </div>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'20px',color:'#888',lineHeight:1,marginLeft:'12px'}}>×</button>
+        </div>
+
+        {/* 사용 안내 */}
+        <div style={{background:'#f5f2eb',border:'1px solid #e0dcd4',padding:'10px 12px',marginBottom:'14px',fontSize:'11px',color:'#666',lineHeight:1.8}}>
+          <strong style={{color:'#0d1b2a',display:'block',marginBottom:'4px'}}>📋 사용 방법</strong>
+          1. 네이버 부동산 매물 상세 페이지 열기<br/>
+          2. 페이지에서 <strong>Ctrl+A</strong> (전체선택) → <strong>Ctrl+C</strong> (복사)<br/>
+          3. 아래 텍스트 박스에 <strong>Ctrl+V</strong> (붙여넣기)<br/>
+          4. <strong>자동 입력</strong> 버튼 클릭 → 건물명·주소만 직접 확인
+        </div>
+
+        {/* 텍스트 입력 */}
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="여기에 네이버 부동산 매물 텍스트를 붙여넣으세요 (Ctrl+V)"
+          rows={11}
+          style={{width:'100%',fontSize:'12px',padding:'10px',border:'1px solid #e0dcd4',resize:'vertical',fontFamily:'inherit',lineHeight:1.7,boxSizing:'border-box'}}
+        />
+
+        {/* 에러 메시지 */}
+        {err && (
+          <div style={{fontSize:'11px',color:'#c0392b',background:'#fff5f4',border:'1px solid #f5c6c2',padding:'8px 10px',marginTop:'8px',lineHeight:1.5}}>
+            ⚠ {err}
+          </div>
+        )}
+
+        {/* 주의 안내 */}
+        <div style={{fontSize:'10px',color:'#aaa',marginTop:'10px',lineHeight:1.6}}>
+          💡 건물명과 주소는 자동 추출이 어려울 수 있습니다. 파싱 후 폼에서 직접 확인·입력해 주세요.
+        </div>
+
+        {/* 버튼 */}
+        <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'14px'}}>
+          <button onClick={onClose}
+            style={{padding:'8px 18px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit',color:'#555'}}>
+            취소
+          </button>
+          <button onClick={parse} disabled={busy}
+            style={{padding:'8px 22px',background:busy?'#aaa':'#0d1b2a',color:'#c9a84c',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit',fontWeight:600,letterSpacing:'.04em',minWidth:'110px'}}>
+            {busy ? '⏳ 분석 중…' : '✨ 자동 입력'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── Supabase 연결 설정 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function SBSetup({ onConnect }) {
@@ -154,9 +281,10 @@ function SBSetup({ onConnect }) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 입력 폼 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function ListingForm({ init, onSave, onClose }) {
-  const [ls, setLs]   = useState(init || blank());
-  const [busy,setBusy]= useState(false);
+function ListingForm({ init, onSave, onClose, apiKey }) {
+  const [ls, setLs]          = useState(init || blank());
+  const [busy, setBusy]      = useState(false);
+  const [showNaver, setShowNaver] = useState(false);
   const set = (k,v) => setLs(p=>({...p,[k]:v}));
 
   const fld = (label, key, ph='', type='text', full=false) => (
@@ -186,84 +314,128 @@ function ListingForm({ init, onSave, onClose }) {
     } finally { setBusy(false); }
   };
 
+  // 네이버 파싱 결과를 폼 필드에 반영
+  const handleParsed = (parsed) => {
+    setLs(prev => ({
+      ...prev,
+      buildingName: parsed.buildingName || prev.buildingName,
+      address:      parsed.address      || prev.address,
+      floor:        parsed.floor        || prev.floor,
+      exclusivePy:  parsed.exclusivePy  || prev.exclusivePy,
+      contractPy:   parsed.contractPy   || prev.contractPy,
+      deposit:      parsed.deposit      || prev.deposit,
+      rent:         parsed.rent         || prev.rent,
+      mgmtFee:      parsed.mgmtFee      || prev.mgmtFee,
+      parking:      parsed.parking      || prev.parking,
+      elevator:     parsed.elevator     || prev.elevator,
+      moveIn:       parsed.moveIn       || prev.moveIn,
+      useAprDate:   parsed.useAprDate   || prev.useAprDate,
+      notes:        parsed.notes        || prev.notes,
+    }));
+    setShowNaver(false);
+  };
+
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
-      <div style={{background:'white',width:'100%',maxWidth:'680px',maxHeight:'90vh',overflowY:'auto',padding:'24px'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px',borderBottom:'2px solid #0d1b2a',paddingBottom:'10px'}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a'}}>
-            {init ? '매물 수정' : '새 매물 등록'}
+    <>
+      {showNaver && (
+        <NaverParseModal
+          apiKey={apiKey}
+          onParsed={handleParsed}
+          onClose={() => setShowNaver(false)}
+        />
+      )}
+
+      <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
+        <div style={{background:'white',width:'100%',maxWidth:'680px',maxHeight:'90vh',overflowY:'auto',padding:'24px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',borderBottom:'2px solid #0d1b2a',paddingBottom:'10px'}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a'}}>
+              {init ? '매물 수정' : '새 매물 등록'}
+            </div>
+            <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'18px',color:'#888'}}>×</button>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'18px',color:'#888'}}>×</button>
-        </div>
 
-        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>기본 정보</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-          {fld('건물명 *',               'buildingName', '예) 반포 파인빌딩')}
-          {fld('별칭 (카드·비교표용)',    'alias',        '예) 반포파인 301호')}
-          {fld('주소',                   'address',      '서울특별시 서초구...', 'text', true)}
-          {fld('층',                     'floor',        '예) 3')}
-          {fld('전용면적 (평)',           'exclusivePy',  '예) 35.5')}
-          {fld('계약면적 (평)',           'contractPy',   '예) 42.0')}
-          {fld('주차',                   'parking',      '예) 전용 2대')}
-          {fld('승강기',                 'elevator',     '예) 2대')}
-        </div>
-
-        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>임대 조건 (만원)</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-          {fld('보증금',    'deposit',  '예) 50000')}
-          {fld('임대료/월', 'rent',     '예) 1200')}
-          {fld('관리비/월', 'mgmtFee',  '예) 200')}
-        </div>
-
-        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>일정</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-          {fld('입주일정',   'moveIn',      '예) 2026-08-01 또는 즉시 입주')}
-          {fld('사용승인일', 'useAprDate',  '예) 2010-03-15')}
-        </div>
-
-        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>
-          추가 항목 <span style={{fontWeight:400,color:'#aaa',fontSize:'10px'}}>(입력 시에만 리포트에 출력)</span>
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-          {fld('렌트프리', 'rentFree', '예) 3개월')}
-          {fld('핏아웃',   'fitOut',   '예) 3개월 + 50만원/평 지원')}
-        </div>
-
-        <div style={{marginBottom:'16px'}}>
-          <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>비고</div>
-          <textarea value={ls.notes||''} rows={3} onChange={e=>set('notes',e.target.value)}
-            placeholder="층별 특이사항, 인테리어 상태, 임대인 조건 등"
-            style={{width:'100%',resize:'vertical',fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
-        </div>
-
-        <div style={{marginBottom:'20px'}}>
-          <div style={{fontSize:'10px',color:'#888',marginBottom:'6px'}}>건물 사진 (1장)</div>
-          <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
-            {ls.photo ? (
-              <div style={{position:'relative',flexShrink:0}}>
-                <img src={ls.photo} style={{width:'120px',height:'80px',objectFit:'cover',border:'1px solid #e0dcd4',display:'block'}} />
-                <button onClick={()=>set('photo',null)}
-                  style={{position:'absolute',top:'2px',right:'2px',background:'rgba(0,0,0,0.6)',color:'white',border:'none',cursor:'pointer',fontSize:'11px',padding:'1px 5px'}}>×</button>
-              </div>
-            ) : (
-              <label style={{width:'120px',height:'80px',border:'2px dashed #e0dcd4',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',background:'#fafaf8',flexShrink:0}}>
-                <span style={{fontSize:'10px',color:'#aaa'}}>📷 업로드</span>
-                <input type="file" accept="image/*" style={{display:'none'}} onChange={handlePhoto} />
-              </label>
-            )}
+          {/* ── 네이버 자동입력 버튼 ── */}
+          <div style={{marginBottom:'18px',padding:'12px 14px',background:'#f0f6ff',border:'1px solid #b8d0f5',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
+            <div>
+              <div style={{fontSize:'12px',fontWeight:600,color:'#1a3a6e',marginBottom:'2px'}}>📋 네이버 매물 텍스트로 자동 입력</div>
+              <div style={{fontSize:'11px',color:'#5a7aaa'}}>네이버 부동산 매물 페이지 텍스트를 붙여넣으면 AI가 자동으로 필드를 채워드립니다</div>
+            </div>
+            <button
+              onClick={() => setShowNaver(true)}
+              style={{flexShrink:0,padding:'7px 16px',background:'#1a3a6e',color:'white',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:'inherit',fontWeight:600,whiteSpace:'nowrap'}}>
+              ✨ 자동 입력
+            </button>
           </div>
-        </div>
 
-        <div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}>
-          <button onClick={onClose}
-            style={{padding:'7px 16px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>취소</button>
-          <button onClick={handleSave} disabled={busy}
-            style={{padding:'7px 20px',background:busy?'#888':'#c9a84c',color:'white',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit'}}>
-            {busy ? '저장 중…' : '저장'}
-          </button>
+          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>기본 정보</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+            {fld('건물명 *',               'buildingName', '예) 반포 파인빌딩')}
+            {fld('별칭 (카드·비교표용)',    'alias',        '예) 반포파인 301호')}
+            {fld('주소',                   'address',      '서울특별시 서초구...', 'text', true)}
+            {fld('층',                     'floor',        '예) 3')}
+            {fld('전용면적 (평)',           'exclusivePy',  '예) 35.5')}
+            {fld('계약면적 (평)',           'contractPy',   '예) 42.0')}
+            {fld('주차',                   'parking',      '예) 전용 2대')}
+            {fld('승강기',                 'elevator',     '예) 2대')}
+          </div>
+
+          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>임대 조건 (만원)</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+            {fld('보증금',    'deposit',  '예) 50000')}
+            {fld('임대료/월', 'rent',     '예) 1200')}
+            {fld('관리비/월', 'mgmtFee',  '예) 200')}
+          </div>
+
+          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>일정</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+            {fld('입주일정',   'moveIn',      '예) 2026-08-01 또는 즉시 입주')}
+            {fld('사용승인일', 'useAprDate',  '예) 2010-03-15')}
+          </div>
+
+          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>
+            추가 항목 <span style={{fontWeight:400,color:'#aaa',fontSize:'10px'}}>(입력 시에만 리포트에 출력)</span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+            {fld('렌트프리', 'rentFree', '예) 3개월')}
+            {fld('핏아웃',   'fitOut',   '예) 3개월 + 50만원/평 지원')}
+          </div>
+
+          <div style={{marginBottom:'16px'}}>
+            <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>비고</div>
+            <textarea value={ls.notes||''} rows={3} onChange={e=>set('notes',e.target.value)}
+              placeholder="층별 특이사항, 인테리어 상태, 임대인 조건 등"
+              style={{width:'100%',resize:'vertical',fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
+          </div>
+
+          <div style={{marginBottom:'20px'}}>
+            <div style={{fontSize:'10px',color:'#888',marginBottom:'6px'}}>건물 사진 (1장)</div>
+            <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
+              {ls.photo ? (
+                <div style={{position:'relative',flexShrink:0}}>
+                  <img src={ls.photo} style={{width:'120px',height:'80px',objectFit:'cover',border:'1px solid #e0dcd4',display:'block'}} />
+                  <button onClick={()=>set('photo',null)}
+                    style={{position:'absolute',top:'2px',right:'2px',background:'rgba(0,0,0,0.6)',color:'white',border:'none',cursor:'pointer',fontSize:'11px',padding:'1px 5px'}}>×</button>
+                </div>
+              ) : (
+                <label style={{width:'120px',height:'80px',border:'2px dashed #e0dcd4',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',background:'#fafaf8',flexShrink:0}}>
+                  <span style={{fontSize:'10px',color:'#aaa'}}>📷 업로드</span>
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={handlePhoto} />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}>
+            <button onClick={onClose}
+              style={{padding:'7px 16px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>취소</button>
+            <button onClick={handleSave} disabled={busy}
+              style={{padding:'7px 20px',background:busy?'#888':'#c9a84c',color:'white',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit'}}>
+              {busy ? '저장 중…' : '저장'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -627,10 +799,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 function InfoPanel({ info, setInfo, onDisconnect }) {
   const [open, setOpen] = useState(false);
   const f = (k,v) => setInfo(p=>({...p,[k]:v}));
-  const inp = (label, key, ph) => (
+  const inp = (label, key, ph, type) => (
     <div>
       <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>{label}</div>
-      <input value={info[key]||''} placeholder={ph} onChange={e=>f(key,e.target.value)}
+      <input value={info[key]||''} placeholder={ph} type={type||'text'} onChange={e=>f(key,e.target.value)}
         style={{width:'100%',fontSize:'11px',padding:'5px 7px',border:'1px solid #e0dcd4'}} />
     </div>
   );
@@ -638,27 +810,48 @@ function InfoPanel({ info, setInfo, onDisconnect }) {
     <div style={{borderTop:'1px solid #e0dcd4',marginTop:'8px',paddingTop:'8px'}}>
       <div onClick={()=>setOpen(!open)}
         style={{cursor:'pointer',fontSize:'11px',color:'#888',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span>{open?'▲':'▼'} 출력 정보 설정 (상호·담당자·로고)</span>
+        <span>{open?'▲':'▼'} 출력 정보 설정 (상호·담당자·로고·API Key)</span>
         <button onClick={e=>{e.stopPropagation();if(confirm('Supabase 연결을 해제하시겠습니까?'))onDisconnect();}}
           style={{fontSize:'10px',padding:'2px 8px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>연결 해제</button>
       </div>
       {open && (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginTop:'10px'}}>
-          {inp('상호', 'bizName', '타임즈부동산중개')}
-          {inp('주소', 'bizAddr', '서울특별시 서초구 반포동 반포프라자')}
-          {inp('담당자', 'agentName', '성재윤')}
-          {inp('연락처', 'agentPhone', '010-6655-5445')}
-          <div style={{gridColumn:'1/-1'}}>
-            <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>로고 이미지</div>
-            <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-              {info.logoSrc && <img src={info.logoSrc} style={{height:'28px',objectFit:'contain',border:'1px solid #e0dcd4'}} />}
-              <label style={{cursor:'pointer',fontSize:'11px',color:'#3a6fd8',border:'1px solid #b8ccff',padding:'4px 10px',background:'#f0f4ff'}}>
-                로고 업로드
-                <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
-                  const file=e.target.files[0]; if(!file) return;
-                  const r=new FileReader(); r.onload=ev=>f('logoSrc',ev.target.result); r.readAsDataURL(file);
-                }} />
-              </label>
+        <div style={{marginTop:'10px'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'12px'}}>
+            {inp('상호', 'bizName', '타임즈부동산중개')}
+            {inp('주소', 'bizAddr', '서울특별시 서초구 반포동 반포프라자')}
+            {inp('담당자', 'agentName', '성재윤')}
+            {inp('연락처', 'agentPhone', '010-6655-5445')}
+            <div style={{gridColumn:'1/-1'}}>
+              <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>로고 이미지</div>
+              <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                {info.logoSrc && <img src={info.logoSrc} style={{height:'28px',objectFit:'contain',border:'1px solid #e0dcd4'}} />}
+                <label style={{cursor:'pointer',fontSize:'11px',color:'#3a6fd8',border:'1px solid #b8ccff',padding:'4px 10px',background:'#f0f4ff'}}>
+                  로고 업로드
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+                    const file=e.target.files[0]; if(!file) return;
+                    const r=new FileReader(); r.onload=ev=>f('logoSrc',ev.target.result); r.readAsDataURL(file);
+                  }} />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Anthropic API Key 섹션 ── */}
+          <div style={{borderTop:'1px solid #e8e4dc',paddingTop:'12px'}}>
+            <div style={{fontSize:'11px',fontWeight:600,color:'#1a3a6e',marginBottom:'6px'}}>✨ 네이버 자동 입력용 Anthropic API Key</div>
+            <div style={{marginBottom:'6px'}}>
+              <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>API Key</div>
+              <input
+                value={info.anthropicKey||''}
+                placeholder="sk-ant-api03-..."
+                type="password"
+                onChange={e=>f('anthropicKey',e.target.value)}
+                style={{width:'100%',fontSize:'11px',padding:'5px 7px',border:'1px solid #b8d0f5',fontFamily:'monospace'}}
+              />
+            </div>
+            <div style={{fontSize:'10px',color:'#aaa',lineHeight:1.7}}>
+              Anthropic Console (<strong>console.anthropic.com</strong>) → API Keys에서 발급.<br/>
+              이 기기 브라우저에만 저장되며 외부로 전송되지 않습니다.
             </div>
           </div>
         </div>
@@ -676,16 +869,15 @@ function App() {
   const [showForm,  setShowForm]  = useState(false);
   const [editing,   setEditing]   = useState(null);
   const [loading,   setLoading]   = useState(false);
-  const [dbReady,   setDbReady]   = useState(false);  // Supabase 연결됨
+  const [dbReady,   setDbReady]   = useState(false);
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
-    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
+    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'', anthropicKey:'',
     ...loadInfo()
   }));
   const [reportTitle, setRT] = useState('');
   const reportDate = new Date().toISOString().slice(0,10);
 
-  // ── 초기 연결 시도 ──
   useEffect(() => {
     const cred = localStorage.getItem(STO_CRED);
     if (cred) {
@@ -693,7 +885,7 @@ function App() {
         const { url, key } = JSON.parse(cred);
         initSB(url, key);
         loadData();
-      } catch {}
+      } catch(e) {}
     }
   }, []);
 
@@ -710,8 +902,7 @@ function App() {
     } finally { setLoading(false); }
   };
 
-  const handleConnect = () => { loadData(); };
-
+  const handleConnect    = () => { loadData(); };
   const handleDisconnect = () => {
     localStorage.removeItem(STO_CRED);
     _sb = null;
@@ -719,7 +910,6 @@ function App() {
     setListings([]);
   };
 
-  // 저장
   const onSave = ls => {
     setListings(p => {
       const idx = p.findIndex(x=>x.id===ls.id);
@@ -728,7 +918,6 @@ function App() {
     setShowForm(false); setEditing(null);
   };
 
-  // 삭제
   const onDelete = async (id, name) => {
     if (!confirm(name+' 매물을 삭제하시겠습니까?')) return;
     try {
@@ -737,7 +926,6 @@ function App() {
     } catch(e) { alert('삭제 실패: '+e.message); }
   };
 
-  // 출력 선택 토글
   const onToggle = async (id) => {
     const updated = listings.map(x=>x.id===id?{...x,printSel:!x.printSel}:x);
     setListings(updated);
@@ -747,7 +935,6 @@ function App() {
 
   const selCount = listings.filter(l=>l.printSel).length;
 
-  // Supabase 미연결
   if (!dbReady && !loading) {
     const cred = localStorage.getItem(STO_CRED);
     if (!cred) return <SBSetup onConnect={handleConnect} />;
@@ -766,7 +953,14 @@ function App() {
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: printCSS}} />
-      {showForm && <ListingForm init={editing} onSave={onSave} onClose={()=>{setShowForm(false);setEditing(null);}} />}
+      {showForm && (
+        <ListingForm
+          init={editing}
+          onSave={onSave}
+          onClose={()=>{setShowForm(false);setEditing(null);}}
+          apiKey={info.anthropicKey}
+        />
+      )}
 
       <header className="no-print" style={{background:'#0d1b2a',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div>
