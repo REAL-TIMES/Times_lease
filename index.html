@@ -3,72 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>건축물대장 비교 조회 | 타임즈부동산중개</title>
+  <title>임대 매물 관리 | 타임즈부동산중개</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-
-  <!-- React 18 + Babel standalone (CDN) -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f7f4ef; color: #1a1a2e; font-family: 'Noto Sans KR', sans-serif; }
-    .print-only { display: none; }
+    body { margin: 0; background: #f7f4ef; color: #1a1a2e;
+           font-family: 'Noto Sans KR', sans-serif; font-size: 13px; }
 
-    /* 버튼 */
-    .bdk { background:#0d1b2a; color:#f7f4ef; border:none; padding:8px 16px; font-size:12px; cursor:pointer; font-family:inherit; letter-spacing:0.04em; transition:background 0.18s; }
+    /* ── 기본 버튼 ── */
+    .bdk { background:#0d1b2a; color:#f7f4ef; border:none; padding:8px 16px;
+           font-size:12px; cursor:pointer; font-family:inherit;
+           letter-spacing:.04em; transition:background .15s; }
     .bdk:hover { background:#c9a84c; }
-    .bdk:disabled { opacity:0.5; cursor:not-allowed; }
-    .blt { background:transparent; color:#0d1b2a; border:1px solid #bbb; padding:8px 16px; font-size:12px; cursor:pointer; font-family:inherit; letter-spacing:0.04em; transition:all 0.18s; }
+    .bdk:disabled { opacity:.5; cursor:not-allowed; }
+    .blt { background:transparent; color:#0d1b2a; border:1px solid #bbb;
+           padding:8px 16px; font-size:12px; cursor:pointer; font-family:inherit;
+           letter-spacing:.04em; transition:all .15s; }
     .blt:hover { background:#0d1b2a; color:#f7f4ef; border-color:#0d1b2a; }
+    .bdg { background:#c9a84c; color:white; border:none; padding:8px 16px;
+           font-size:12px; cursor:pointer; font-family:inherit; letter-spacing:.04em; }
+    .bdg:hover { background:#b8933c; }
 
-    /* 입력 */
-    input, select { font-family:inherit; font-size:13px; color:#1a1a2e; background:white; border:1px solid #ccc8c0; padding:7px 9px; outline:none; }
-    input:focus, select:focus { border-color:#c9a84c; }
+    /* ── 입력 ── */
+    input, select, textarea {
+      font-family:inherit; font-size:12px; color:#1a1a2e;
+      background:white; border:1px solid #ccc8c0;
+      padding:6px 8px; outline:none; }
+    input:focus, select:focus, textarea:focus { border-color:#c9a84c; }
 
-    /* 인쇄 */
+    /* ── 인쇄 ── */
     @media print {
-      .no-print    { display: none !important; }
-      .screen-only { display: none !important; }
-      .print-hide  { display: none !important; }
-      .print-only  { display: block !important; }
-      .ph   { display: block !important; page-break-after: avoid; break-after: avoid; }
-      body  { background: white; margin: 0 !important; padding: 0 !important; }
-      /* 1페이지와 2페이지 인쇄 시작 위치 통일 — main의 padding-top/bottom 제거 */
-      main, .print-main  { padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-      /* 카드 그리드 상단 여백 제거 — 모든 페이지 동일 시작 위치 */
-      .cg { padding-top: 0 !important; }
-      header, nav, footer { display: none !important; }
-      @page {
-        @bottom-center {
-          content: "- " counter(page) " / " counter(pages) " -";
-          font-size: 9pt;
-          color: #888;
-          font-family: 'Noto Sans KR', sans-serif;
-        }
-      }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      /* 카드 그리드 */
-      .cg  { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 12px !important; }
-      /* 카드 중간 잘림 방지 */
-      .pci { break-inside: avoid; page-break-inside: avoid; }
-      .ptk { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #0d1b2a !important; color: white !important; }
-      .plc { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #f7f4ef !important; }
+      .no-print    { display:none !important; }
+      .screen-only { display:none !important; }
+      .print-only  { display:block !important; }
+      body  { background:white; margin:0; padding:0; }
+      main, .print-main {
+        padding-top:0 !important; padding-bottom:0 !important;
+        margin-top:0 !important; margin-bottom:0 !important; }
+      .cg { padding-top:0 !important; }
+      * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+      .ptk { background:#0d1b2a !important; color:white !important; }
+      @page { @bottom-center {
+        content:"- " counter(page) " / " counter(pages) " -";
+        font-size:9pt; color:#888;
+        font-family:'Noto Sans KR',sans-serif; } }
     }
   </style>
 </head>
 <body>
   <div id="root">
-    <!-- 로딩 중 표시 -->
     <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;color:#aaa;">
       <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#0d1b2a;">타임즈부동산중개</div>
       <div style="font-size:12px;">앱을 불러오는 중…</div>
     </div>
   </div>
-
-  <!-- React 앱 (Babel이 JSX 컴파일) -->
   <script type="text/babel" src="/app.js" data-presets="react"></script>
 </body>
 </html>
