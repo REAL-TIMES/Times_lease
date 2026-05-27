@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.2.5 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.2.5';
+// ── TIMES 임대 매물 관리 v1.2.6 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.2.6';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -433,7 +433,7 @@ function ListingForm({ init, onSave, onClose }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.2.5 레이아웃 개선) ──
+// ── 매물 카드 (v1.2.6 레이아웃 개선) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCard({ ls, onEdit, onDelete, onToggle }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
@@ -552,7 +552,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.2.5 ──
+// ── 비교표 v1.2.6 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1001,7 +1001,7 @@ function App() {
 
   const printCSS = view==='report'
     ? '@media print { @page { size:A4 portrait !important; margin:10mm 12mm 18mm; } .report-card { page-break-after:always; break-after:page; } }'
-    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 16mm; @bottom-left { content:"'+(info.bizName||'')+(info.bizAddr?'  |  '+info.bizAddr:'')+'"; font-size:7.5pt; color:#555; font-family:sans-serif; } @bottom-right { content:"'+(info.agentName||'')+(info.agentPhone?'   '+info.agentPhone:'')+'"; font-size:7.5pt; color:#555; font-family:sans-serif; } } .print-only { display:block !important; } }';
+    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 14mm; } .print-only { display:block !important; } }';
 
   const TABS = [
     {id:'list',    label:'📋 매물 목록'},
@@ -1016,19 +1016,23 @@ function App() {
         <ListingForm init={editing} onSave={onSave} onClose={()=>{setShowForm(false);setEditing(null);}} />
       )}
 
-      <header className="no-print" style={{background:'#0d1b2a',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <header className="no-print" style={{background:'#0d1b2a',padding:'12px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div>
-          <div style={{fontSize:'8px',letterSpacing:'.2em',color:'#c9a84c'}}>TIMES REAL ESTATE</div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',color:'white',fontWeight:400}}>
-            임대 매물 관리
-            <span style={{fontSize:'10px',color:'#c9a84c',marginLeft:'8px',fontFamily:'inherit',fontWeight:300,letterSpacing:'.05em'}}>{APP_VERSION}</span>
+          <div style={{fontSize:'10px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'2px'}}>TIMES REAL ESTATE</div>
+          <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22px',color:'white',fontWeight:500,lineHeight:1}}>
+              임대 매물 관리
+            </div>
+            <span style={{fontSize:'12px',color:'#0d1b2a',background:'#c9a84c',padding:'2px 8px',fontWeight:700,letterSpacing:'.04em',borderRadius:'2px',fontFamily:'inherit'}}>
+              {APP_VERSION}
+            </span>
           </div>
         </div>
-        <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
-          {loading && <span style={{fontSize:'11px',color:'#c9a84c'}}>⏳ 동기화 중…</span>}
-          {!loading && <span style={{fontSize:'11px',color:'#888'}}>☁ Supabase 연결됨 · 선택 {selCount}건</span>}
+        <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+          {loading && <span style={{fontSize:'13px',color:'#c9a84c'}}>⏳ 동기화 중…</span>}
+          {!loading && <span style={{fontSize:'13px',color:'#9aacbe'}}>☁ Supabase 연결됨 &nbsp;·&nbsp; 선택 {selCount}건</span>}
           {view!=='list' && <button onClick={()=>window.print()}
-            style={{padding:'6px 14px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>🖨 인쇄</button>}
+            style={{padding:'7px 16px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit',fontWeight:600}}>🖨 인쇄</button>}
         </div>
       </header>
 
@@ -1037,9 +1041,9 @@ function App() {
           <div style={{display:'flex'}}>
             {TABS.map(t=>(
               <button key={t.id} onClick={()=>setView(t.id)}
-                style={{padding:'10px 18px',fontSize:'12px',border:'none',cursor:'pointer',background:'none',
-                        borderBottom:view===t.id?'2px solid #c9a84c':'2px solid transparent',
-                        color:view===t.id?'#0d1b2a':'#888',fontWeight:view===t.id?700:400,fontFamily:'inherit'}}>
+                style={{padding:'11px 20px',fontSize:'14px',border:'none',cursor:'pointer',background:'none',
+                        borderBottom:view===t.id?'3px solid #c9a84c':'3px solid transparent',
+                        color:view===t.id?'#0d1b2a':'#999',fontWeight:view===t.id?700:400,fontFamily:'inherit'}}>
                 {t.label}
               </button>
             ))}
@@ -1048,16 +1052,16 @@ function App() {
             {view!=='list' && (
               <input value={reportTitle} onChange={e=>setRT(e.target.value)}
                 placeholder="보고서 제목 (고객명)"
-                style={{fontSize:'12px',padding:'5px 10px',border:'1px solid #ccc8c0',width:'200px'}} />
+                style={{fontSize:'14px',padding:'6px 12px',border:'1px solid #ccc8c0',width:'220px'}} />
             )}
             {view==='list' && (
               <>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:true})))}
-                  style={{padding:'5px 12px',fontSize:'11px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>전체 선택</button>
+                  style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>전체 선택</button>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:false})))}
-                  style={{padding:'5px 12px',fontSize:'11px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>선택 해제</button>
+                  style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>선택 해제</button>
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
-                  style={{padding:'6px 16px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>+ 새 매물 등록</button>
+                  style={{padding:'7px 18px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'14px',fontFamily:'inherit',fontWeight:600}}>+ 새 매물 등록</button>
               </>
             )}
           </div>
