@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.1 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.1';
+// ── TIMES 임대 매물 관리 v1.4.2 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.2';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.1 ──
+// ── 비교표 컬럼 v1.4.2 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.1 ──
+// ── 비교표 v1.4.2 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1009,7 +1009,7 @@ function App() {
 
   const printCSS = view==='report'
     ? '@media print { @page { size:A4 portrait !important; margin:10mm 12mm 18mm; } .report-card { page-break-after:always; break-after:page; } }'
-    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 16mm; @bottom-left { content:"'+(info.bizName||'')+(info.bizAddr?'  |  '+info.bizAddr:'')+'"; font-size:7.5pt; color:#555; font-family:sans-serif; } @bottom-right { content:"'+(info.agentName||'')+(info.agentPhone?'   '+info.agentPhone:'')+'"; font-size:7.5pt; color:#555; font-family:sans-serif; } } .print-only { display:block !important; } }';
+    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 14mm; } .print-only { display:block !important; } }';
 
   const TABS = [
     {id:'list',    label:'📋 매물 목록'},
