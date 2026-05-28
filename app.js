@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.0';
+// ── TIMES 임대 매물 관리 v1.4.1 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.1';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.0 ──
+// ── 비교표 컬럼 v1.4.1 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.0 ──
+// ── 비교표 v1.4.1 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -481,7 +481,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
     borderLeft:'none', borderRight:'none', borderTop:'none', borderBottom:BD_HD,
     verticalAlign:'bottom', textAlign:'center',
   };
-  const thEmptyS = {background:'white', borderLeft:BD, borderTop:'none', borderRight:'none', borderBottom:BD_HD, padding:'0'};
+  const thEmptyS = {background:'white', borderLeft:'none', borderTop:'none', borderRight:'none', borderBottom:BD_HD, padding:'0'};
   const plS = {
     background:'#fafaf8', padding:'4.5pt 6pt', color:'#555', fontWeight:600,
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
@@ -551,7 +551,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               <tr>
                 <th style={thEmptyS}></th>
                 {chunk.map((l,li)=>(
-                  <th key={l.id} style={{...thS,borderRight:li===chunk.length-1?BD:'none'}}>
+                  <th key={l.id} style={thS}>
                     <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'12pt',fontWeight:700,color:'#0d1b2a',lineHeight:1.2,marginBottom:'3pt'}}>
                       {l.buildingName||'(이름없음)'}
                     </div>
@@ -584,7 +584,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                       {col.sec && (
                         <tr>
                           <td style={secLblS}>{col.sec}</td>
-                          {chunk.map(function(l,li){ return <td key={l.id} style={{...secCellS,borderRight:li===chunk.length-1?BD:'none'}}></td>; })}
+                          {chunk.map(function(l){ return <td key={l.id} style={secCellS}></td>; })}
                         </tr>
                       )}
                       <tr>
@@ -756,20 +756,22 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
       <div style={{padding:'18px 20px 14px'}}>
 
-        {/* ── 중단: 사진 + 임대조건 (높이 맞춤) ── */}
-        <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
+        {/* ── 임대조건 헤더 (사진 위) ── */}
+        {hd('📋 임대 조건')}
 
-          {/* 사진 — 임대조건 높이에 맞춤 */}
-          <div style={{width:'250px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',display:'flex',alignItems:'stretch'}}>
+        {/* ── 사진(4:3) + 임대조건 테이블 — 헤더 아래 나란히 ── */}
+        <div style={{display:'flex',gap:'20px',marginBottom:'12px'}}>
+
+          {/* 사진 — 4:3 고정 비율 */}
+          <div style={{width:'260px',height:'195px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
             {ls.photo
-              ? <img src={ls.photo} style={{width:'100%',objectFit:'cover',display:'block'}} />
-              : <div className="print-only" style={{minHeight:'180px',flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
+              ? <img src={ls.photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+              : <div className="print-only" style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
             }
           </div>
 
-          {/* 임대조건 테이블 */}
+          {/* 임대조건 테이블 — 사진 우측 */}
           <div style={{flex:1,minWidth:0}}>
-            {hd('📋 임대 조건')}
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <tbody>
                 {row('전용면적', ls.exclusivePy ? ls.exclusivePy+'평 ('+(py2m(ls.exclusivePy)||'—')+'㎡)' : null)}
