@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.5 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.5';
+// ── TIMES 임대 매물 관리 v1.4.6 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.6';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -19,19 +19,21 @@ const initSB = (url, key) => {
 
 // ── DB 조작 ──
 const dbLoad = async () => {
-  const { data, error } = await getSB()
-    .from(TBL).select('id, data, updated_at')
-    .order('updated_at', {ascending:true})
-    .limit(200);
-  if (error) throw error;
-  // 사진(base64) 제외 → 초기 로딩 속도 개선
-  return data.map(r => {
-    var d = Object.assign({}, r.data || {});
-    var photo = d.photo; // 보관
-    delete d.photo;
-    d._photo = photo;   // 별도 키로 보관 (표시용)
-    return d;
-  });
+  // RPC 함수로 사진 제외 → DB 레벨에서 데이터 크기 감소
+  const { data, error } = await getSB().rpc('get_listings_no_photo');
+  if (error) {
+    // RPC 없으면 일반 쿼리로 fallback (사진 JS에서 제외)
+    const { data: d2, error: e2 } = await getSB()
+      .from(TBL).select('id, data, updated_at')
+      .order('updated_at', {ascending:true}).limit(200);
+    if (e2) throw e2;
+    return d2.map(r => {
+      var d = Object.assign({}, r.data || {});
+      delete d.photo;
+      return d;
+    });
+  }
+  return data.map(r => Object.assign({}, r.listing_data || {}));
 };
 const dbUpsert = async (listing) => {
   const { error } = await getSB().from(TBL)
@@ -85,7 +87,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.5 ──
+// ── 비교표 컬럼 v1.4.6 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -481,7 +483,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.5 ──
+// ── 비교표 v1.4.6 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
