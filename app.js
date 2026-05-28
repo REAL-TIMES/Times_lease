@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.6.4 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.4';
+// ── TIMES 임대 매물 관리 v1.6.5 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.5';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.4 ──
+// ── 비교표 컬럼 v1.6.5 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.4 ──
+// ── 비교표 v1.6.5 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -939,13 +939,18 @@ function KakaoMapView({ address, kakaoKey }) {
       try {
         var geocoder = new window.kakao.maps.services.Geocoder();
         geocoder.addressSearch(address, function(result, status) {
+          console.log('[KakaoMap] geocode status:', status, 'results:', result ? result.length : 0);
           if (status === window.kakao.maps.services.Status.OK) {
             var coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
             var mapObj = new window.kakao.maps.Map(containerRef.current, { center: coords, level: 3 });
             new window.kakao.maps.Marker({ map: mapObj, position: coords });
             setMapStatus('ok');
-          } else {
+          } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+            console.log('[KakaoMap] 주소 없음 - address:', address);
             setMapStatus('error');
+          } else {
+            console.log('[KakaoMap] API 오류 - 도메인 미등록 가능성', status);
+            setMapStatus('domain');
           }
         });
       } catch(e) { setMapStatus('error'); }
@@ -992,6 +997,12 @@ function KakaoMapView({ address, kakaoKey }) {
         <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'6px'}}>
           <div style={{fontSize:'18px'}}>🔑</div>
           <div style={{fontSize:'11px',color:'#aaa',textAlign:'center',padding:'0 12px'}}>출력 정보 설정에서<br/>카카오맵 API 키를 입력하세요</div>
+        </div>
+      )}
+      {mapStatus==='domain' && (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#fff8f0',flexDirection:'column',gap:'6px',padding:'10px'}}>
+          <div style={{fontSize:'18px'}}>⚙️</div>
+          <div style={{fontSize:'10px',color:'#a05800',textAlign:'center',lineHeight:1.6}}>카카오 개발자센터에서<br/>Web 플랫폼 도메인을<br/>등록해 주세요</div>
         </div>
       )}
     </div>
