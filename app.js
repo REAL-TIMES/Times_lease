@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.2 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.2';
+// ── TIMES 임대 매물 관리 v1.4.3 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.3';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.2 ──
+// ── 비교표 컬럼 v1.4.3 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.2 ──
+// ── 비교표 v1.4.3 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -953,15 +953,24 @@ function App() {
 
   useEffect(() => { saveInfo(info); }, [info]);
 
-  const loadData = async () => {
+  const loadData = async (attempt) => {
+    var tries = attempt || 1;
     setLoading(true);
     try {
       const data = await dbLoad();
       setListings(data);
       setDbReady(true);
     } catch(e) {
-      alert('데이터 불러오기 실패: '+e.message);
-    } finally { setLoading(false); }
+      if (tries < 3) {
+        // timeout 등 일시적 오류 → 1.5초 후 자동 재시도
+        setTimeout(function(){ loadData(tries + 1); }, 1500);
+      } else {
+        alert('데이터 불러오기 실패 (3회 시도): ' + e.message + '\n\n페이지를 새로고침 해주세요.');
+        setLoading(false);
+      }
+    } finally {
+      if (tries >= 3) setLoading(false);
+    }
   };
 
   const handleConnect = () => { loadData(); };
