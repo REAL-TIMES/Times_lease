@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.3.2 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.2';
+// ── TIMES 임대 매물 관리 v1.3.3 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.3';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -79,7 +79,7 @@ const floorLabel = ls => {
   return ls.floor+'층'+(ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : '');
 };
 
-// ── 비교표 컬럼 v1.3.2 ──
+// ── 비교표 컬럼 v1.3.3 ──
 const CMP_COLS = [
   // 면적 (평만 표시)
   { l:'전용면적', sec:'면적',
@@ -442,7 +442,7 @@ function ListingForm({ init, onSave, onClose }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.3.2 레이아웃 개선) ──
+// ── 매물 카드 (v1.3.3 레이아웃 개선) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCard({ ls, onEdit, onDelete, onToggle }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
@@ -561,7 +561,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.2 (B안 미니멀 + 세부 조정) ──
+// ── 비교표 v1.3.3 (B안 미니멀 + 세부 조정) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -569,13 +569,13 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
     <div style={{textAlign:'center',padding:'60px',color:'#aaa'}}>비교할 매물을 목록에서 선택(체크)하세요</div>
   );
 
-  const CHUNK = 4;
+  const CHUNK = 5;
   const chunks = [];
   for (let i=0; i<sel.length; i+=CHUNK) chunks.push(sel.slice(i,i+CHUNK));
 
-  // ── v1.3.2 스타일 ──
-  const labelColW = '80pt';
-  const dataColW  = '130pt';
+  // ── v1.3.3 스타일 ──
+  const labelColW = '78pt';
+  const dataColW  = '118pt';
   const BD    = '0.5pt solid #e8e4dc';          // 일반 셀 보더
   const BD_HD = '2.5pt solid #c9a84c';          // 컬럼 헤더 골드 밑줄
   const BD_SEC_TOP = '1pt solid #ccc8c0';       // 섹션 상단 — 회색(산만하지 않게)
@@ -672,7 +672,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                     </div>
                     {l.floor && (
                       <div style={{fontSize:'7.5pt',color:'#b07c20',fontWeight:600,marginTop:'3pt',letterSpacing:'.06em'}}>
-                        {l.floor}층{l.totalFloor?' · 총 '+l.totalFloor+'층':''}
+                        {l.floor}층
                       </div>
                     )}
                   </th>
@@ -738,7 +738,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               {sel.map(l=>(
                 <th key={l.id} style={{background:'white',padding:'10px 14px',textAlign:'center',borderBottom:'3px solid #c9a84c',minWidth:'150px',borderRight:'0.5px solid #e8e4dc'}}>
                   <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'16px',fontWeight:700,color:'#0d1b2a',marginBottom:'4px'}}>{l.buildingName}</div>
-                  {l.floor && <div style={{fontSize:'11px',color:'#b07c20',fontWeight:600,marginTop:'3px',letterSpacing:'.06em'}}>{l.floor}층{l.totalFloor?' · 총 '+l.totalFloor+'층':''}</div>}
+                  {l.floor && <div style={{fontSize:'11px',color:'#b07c20',fontWeight:600,marginTop:'3px',letterSpacing:'.06em'}}>{l.floor}층</div>}
                 </th>
               ))}
             </tr>
