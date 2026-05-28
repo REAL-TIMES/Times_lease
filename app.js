@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.6 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.6';
+// ── TIMES 임대 매물 관리 v1.5.7 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.7';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.6 ──
+// ── 비교표 컬럼 v1.5.7 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.6 ──
+// ── 비교표 v1.5.7 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1001,7 +1001,8 @@ function App() {
   const [loadErr,   setLoadErr]   = useState('');
   const [dbReady,   setDbReady]   = useState(false);
   const [dragId,    setDragId]    = useState(null);
-  const [areaFilter, setAreaFilter] = useState('all');   // 전용면적 필터
+  const [areaMin, setAreaMin] = useState('');  // 전용면적 최저
+  const [areaMax, setAreaMax] = useState('');  // 전용면적 최대
   const [confirmDlg, setConfirmDlg] = useState(null);    // { message, subMessage, onConfirm }
   const [delBusy,   setDelBusy]    = useState(false);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
@@ -1158,25 +1159,22 @@ function App() {
 
   const selCount = listings.filter(l=>l.printSel).length;
 
-  // 전용면적 필터용 range 동적 생성 (10평 단위)
-  var areaRanges = (function(){
+  // 전용면적 드롭다운 옵션 (10평 단위, 실제 데이터 기반)
+  var areaOptions = (function(){
     var pys = listings.map(function(l){ return parseFloat(l.exclusivePy); }).filter(function(v){ return !isNaN(v)&&v>0; });
     if (!pys.length) return [];
     var maxPy = Math.ceil(Math.max.apply(null,pys)/10)*10;
-    var minPy = Math.floor(Math.min.apply(null,pys)/10)*10;
-    var ranges = [];
-    for (var s=minPy; s<maxPy; s+=10) {
-      ranges.push({label:s+'~'+(s+10)+'평', min:s, max:s+10});
-    }
-    return ranges;
+    var opts = [];
+    for (var v=10; v<=maxPy; v+=10) opts.push(v);
+    return opts;
   })();
 
   // 필터 적용된 목록
-  var filteredListings = areaFilter==='all' ? listings : listings.filter(function(l){
+  var filteredListings = listings.filter(function(l){
     var py = parseFloat(l.exclusivePy);
-    if (isNaN(py)) return false;
-    var parts = areaFilter.split('-');
-    return py >= parseFloat(parts[0]) && py < parseFloat(parts[1]);
+    if (areaMin !== '' && !isNaN(py) && py < parseFloat(areaMin)) return false;
+    if (areaMax !== '' && !isNaN(py) && py > parseFloat(areaMax)) return false;
+    return true;
   });
 
   // Supabase 미연결
@@ -1245,14 +1243,29 @@ function App() {
             )}
             {view==='list' && (
               <>
-                {/* 전용면적 필터 */}
-                <select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}
-                  style={{padding:'6px 10px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit',minWidth:'120px'}}>
-                  <option value="all">전용면적 전체</option>
-                  {areaRanges.map(function(r){
-                    return <option key={r.label} value={r.min+'-'+r.max}>{r.label}</option>;
-                  })}
-                </select>
+                {/* 전용면적 필터 — 최저/최대 */}
+                <div style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'13px'}}>
+                  <select value={areaMin} onChange={e=>setAreaMin(e.target.value)}
+                    style={{padding:'6px 8px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit'}}>
+                    <option value="">최저 없음</option>
+                    {areaOptions.filter(function(v){ return areaMax===''||v<parseFloat(areaMax); }).map(function(v){
+                      return <option key={v} value={v}>{v}평</option>;
+                    })}
+                  </select>
+                  <span style={{color:'#aaa',fontSize:'12px',flexShrink:0}}>~ 이상</span>
+                  <select value={areaMax} onChange={e=>setAreaMax(e.target.value)}
+                    style={{padding:'6px 8px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit'}}>
+                    <option value="">최대 없음</option>
+                    {areaOptions.filter(function(v){ return areaMin===''||v>parseFloat(areaMin); }).map(function(v){
+                      return <option key={v} value={v}>{v}평</option>;
+                    })}
+                  </select>
+                  <span style={{color:'#aaa',fontSize:'12px',flexShrink:0}}>이하</span>
+                  {(areaMin!==''||areaMax!=='') && (
+                    <button onClick={function(){setAreaMin('');setAreaMax('');}}
+                      style={{padding:'5px 8px',fontSize:'11px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontFamily:'inherit'}}>✕</button>
+                  )}
+                </div>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:true})))}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>전체 선택</button>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:false})))}
@@ -1302,7 +1315,7 @@ function App() {
                   {listings.length===0 ? '등록된 매물이 없습니다' : '검색 결과가 없습니다'}
                 </div>
                 <div style={{fontSize:'12px',marginBottom:'20px'}}>
-                  {listings.length===0 ? '+ 새 매물 등록 버튼을 눌러 매물을 추가하세요' : '다른 면적 범위를 선택해보세요'}
+                  {listings.length===0 ? '+ 새 매물 등록 버튼을 눌러 매물을 추가하세요' : '다른 면적 조건을 선택해보세요'}
                 </div>
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
                   style={{padding:'10px 24px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>+ 첫 매물 등록</button>
