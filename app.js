@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.3.8 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.8';
+// ── TIMES 임대 매물 관리 v1.3.9 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.9';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.3.8 ──
+// ── 비교표 컬럼 v1.3.9 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.8 ──
+// ── 비교표 v1.3.9 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -680,8 +680,8 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
   // ── 섹션 헤더 ──
   const hd = label => (
-    <div style={{fontSize:'11px',fontWeight:600,color:'#0d1b2a',marginBottom:'6px',
-      letterSpacing:'.05em',borderBottom:'1px solid #e0dcd4',paddingBottom:'4px'}}>{label}</div>
+    <div style={{fontSize:'13px',fontWeight:600,color:'#0d1b2a',marginBottom:'8px',
+      letterSpacing:'.04em',borderBottom:'1px solid #e0dcd4',paddingBottom:'5px'}}>{label}</div>
   );
 
   // ── 임대조건 테이블 행 (라벨 우측정렬, 균형) ──
@@ -733,15 +733,23 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
       {/* ── 헤더 ── */}
       <div style={{background:'white',padding:'16px 20px 14px',borderBottom:'2.5px solid #0d1b2a'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          {/* 좌측: 서브타이틀 + 건물명 + 주소 */}
           <div>
             <div style={{fontSize:'9px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'10px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
-            {reportTitle && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'28px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'4px'}}>{reportTitle}</div>}
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'18px',fontWeight:500,color:'#333',lineHeight:1.2}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',fontWeight:600,color:'#0d1b2a',lineHeight:1.2}}>
               {ls.buildingName}
             </div>
-            {ls.address && <div style={{fontSize:'10px',color:'#888',marginTop:'4px'}}>{ls.address}</div>}
+            {ls.address && <div style={{fontSize:'10px',color:'#888',marginTop:'5px'}}>{ls.address}</div>}
           </div>
-          <div style={{textAlign:'right',fontSize:'11px',color:'#555',fontWeight:500,flexShrink:0,marginLeft:'12px'}}>{reportDate}</div>
+          {/* 우측: 문서제목(보고서 제목) + 날짜 */}
+          <div style={{textAlign:'right',flexShrink:0,marginLeft:'16px'}}>
+            {reportTitle && (
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'26px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'6px'}}>
+                {reportTitle}
+              </div>
+            )}
+            <div style={{fontSize:'11px',color:'#888',fontWeight:400}}>{reportDate}</div>
+          </div>
         </div>
       </div>
 
@@ -830,7 +838,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         {/* ── 비고 ── */}
         {ls.notes && (
           <div style={{marginBottom:'14px'}}>
-            {hd('📝 비고')}
+            {hd('📝 부가설명')}
             <div style={{fontSize:'13px',color:'#1a1a2e',lineHeight:1.9,padding:'4px 0'}}>
               {ls.notes.split('\n').filter(l=>l.trim()).map((line,i)=>(
                 <div key={i} style={{display:'flex',gap:'6px'}}>
