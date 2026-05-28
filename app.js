@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.3 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.3';
+// ── TIMES 임대 매물 관리 v1.5.4 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.4';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.3 ──
+// ── 비교표 컬럼 v1.5.4 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.3 ──
+// ── 비교표 v1.5.4 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -743,17 +743,14 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
   ) : null;
 
   // ── 하단 금액 카드 ──
-  const amtCard = (label, value, dark, vat) => (
+  const amtCard = (label, value, dark) => (
     <div style={{
       background: dark?'#0d1b2a':'#f5f2eb',
       padding:'10px 14px',
       borderLeft: dark?'3px solid #c9a84c':'3px solid #e0dcd4',
     }}>
       <div style={{fontSize:'9px',color: dark?'#c9a84c':'#888',letterSpacing:'.18em',marginBottom:'4px',fontWeight:600}}>{label}</div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:'6px'}}>
-        <div style={{fontSize:'16px',fontWeight:700,color: dark?'white':'#0d1b2a',lineHeight:1,letterSpacing:'-.01em'}}>{value}</div>
-        {vat && <span style={{fontSize:'9px',color:dark?'rgba(201,168,76,0.65)':'#bbb',letterSpacing:'.04em',fontWeight:400,flexShrink:0}}>부가세 별도</span>}
-      </div>
+      <div style={{fontSize:'16px',fontWeight:700,color: dark?'white':'#0d1b2a',lineHeight:1,letterSpacing:'-.01em'}}>{value}</div>
     </div>
   );
 
@@ -825,9 +822,9 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         {(ls.deposit || ls.rent || ls.mgmtFee) && (
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px',marginBottom:'14px',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}}>
             {ls.deposit && amtCard('DEPOSIT / 보증금',   fmt(ls.deposit),   false)}
-            {ls.rent    && amtCard('RENT / 임대료',      fmt(ls.rent),      false, true)}
-            {ls.mgmtFee && amtCard('MGMT / 관리비',      fmt(ls.mgmtFee),   false, true)}
-            {totMon > 0 && amtCard('TOTAL / 월 합계',    fmt(totMon),       true,  true)}
+            {ls.rent    && amtCard('RENT / 임대료',      fmt(ls.rent),      false)}
+            {ls.mgmtFee && amtCard('MGMT / 관리비',      fmt(ls.mgmtFee),   false)}
+            {totMon > 0 && amtCard('TOTAL / 월 합계',    fmt(totMon),       true)}
           </div>
         )}
 
