@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.8 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.8';
+// ── TIMES 임대 매물 관리 v1.4.9 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.9';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.8 ──
+// ── 비교표 컬럼 v1.4.9 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.8 ──
+// ── 비교표 v1.4.9 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -987,50 +987,46 @@ function App() {
 
   useEffect(() => { saveInfo(info); }, [info]);
 
-  const sortListings = data => {
-    return data.slice().sort(function(a,b){
-      var ao = (a.sortOrder !== undefined) ? a.sortOrder : (a.createdAt||0);
-      var bo = (b.sortOrder !== undefined) ? b.sortOrder : (b.createdAt||0);
+  const doSort = function(arr) {
+    return arr.slice().sort(function(a,b){
+      var ao = a.sortOrder !== undefined ? a.sortOrder : (a.createdAt||0);
+      var bo = b.sortOrder !== undefined ? b.sortOrder : (b.createdAt||0);
       return ao - bo;
     });
   };
 
   const loadData = async () => {
-    // ① 캐시 즉시 표시 (로딩 화면 없음)
+    // 캐시가 있으면 즉시 표시
     try {
-      var cached = JSON.parse(localStorage.getItem(STO_CACHE) || '[]');
-      if (cached.length > 0) {
-        setListings(sortListings(cached));
-        setDbReady(true);
-      }
-    } catch(ce) {}
-
-    // ② 백그라운드에서 Supabase 최신 데이터 동기화
-    setLoading(true);
-    setLoadErr('');
-    var ok = false;
-    for (var i = 1; i <= 3; i++) {
-      try {
-        var data = await dbLoad();
-        var sorted = sortListings(data);
-        setListings(sorted);
-        setDbReady(true);
-        setLoadErr('');
-        try { localStorage.setItem(STO_CACHE, JSON.stringify(sorted)); } catch(le) {}
-        ok = true;
-        break;
-      } catch(e) {
-        if (i < 3) {
-          await new Promise(function(r){ setTimeout(r, 2000); });
-        } else if (!ok) {
-          // 캐시도 없을 때만 오류 표시
-          var hasCached = false;
-          try { hasCached = JSON.parse(localStorage.getItem(STO_CACHE)||'[]').length > 0; } catch(x){}
-          if (!hasCached) setLoadErr(e.message || '연결 실패');
+      var raw = localStorage.getItem(STO_CACHE);
+      if (raw) {
+        var cached = JSON.parse(raw);
+        if (cached && cached.length > 0) {
+          setListings(doSort(cached));
+          setDbReady(true);
         }
       }
+    } catch(e1) {}
+
+    // Supabase에서 최신 데이터 로드
+    setLoading(true);
+    setLoadErr('');
+    try {
+      var fresh = await dbLoad();
+      var sorted = doSort(fresh);
+      setListings(sorted);
+      setDbReady(true);
+      try { localStorage.setItem(STO_CACHE, JSON.stringify(sorted)); } catch(e2) {}
+    } catch(err) {
+      try {
+        var hasCached = JSON.parse(localStorage.getItem(STO_CACHE)||'[]').length > 0;
+        if (!hasCached) setLoadErr(err.message || '연결 실패');
+      } catch(e3) {
+        setLoadErr(err.message || '연결 실패');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleConnect = () => { loadData(); };
