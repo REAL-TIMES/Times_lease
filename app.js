@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.2 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.2';
+// ── TIMES 임대 매물 관리 v1.5.3 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.3';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.2 ──
+// ── 비교표 컬럼 v1.5.3 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.2 ──
+// ── 비교표 v1.5.3 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -750,8 +750,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
       borderLeft: dark?'3px solid #c9a84c':'3px solid #e0dcd4',
     }}>
       <div style={{fontSize:'9px',color: dark?'#c9a84c':'#888',letterSpacing:'.18em',marginBottom:'4px',fontWeight:600}}>{label}</div>
-      <div style={{fontSize:'16px',fontWeight:700,color: dark?'white':'#0d1b2a',lineHeight:1,letterSpacing:'-.01em'}}>{value}</div>
-      {vat && <div style={{fontSize:'9px',color:dark?'rgba(201,168,76,0.65)':'#bbb',marginTop:'5px',letterSpacing:'.04em',fontWeight:400}}>부가세 별도</div>}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:'6px'}}>
+        <div style={{fontSize:'16px',fontWeight:700,color: dark?'white':'#0d1b2a',lineHeight:1,letterSpacing:'-.01em'}}>{value}</div>
+        {vat && <span style={{fontSize:'9px',color:dark?'rgba(201,168,76,0.65)':'#bbb',letterSpacing:'.04em',fontWeight:400,flexShrink:0}}>부가세 별도</span>}
+      </div>
     </div>
   );
 
