@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.6.3 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.3';
+// ── TIMES 임대 매물 관리 v1.6.4 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.4';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.3 ──
+// ── 비교표 컬럼 v1.6.4 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.3 ──
+// ── 비교표 v1.6.4 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -974,10 +974,10 @@ function KakaoMapView({ address, kakaoKey }) {
   }, [address, kakaoKey]);
 
   return (
-    <div style={{width:'100%',height:'100%',position:'relative',background:'#f0ede6',minHeight:'180px'}}>
-      <div ref={containerRef} style={{width:'100%',height:'100%',minHeight:'180px'}} />
+    <div style={{width:'260px',height:'195px',position:'relative',background:'#f0ede6'}}>
+      <div ref={containerRef} style={{width:'260px',height:'195px'}} />
       {mapStatus==='loading' && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'8px'}}>
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f0ede6',flexDirection:'column',gap:'8px'}}>
           <div style={{fontSize:'20px'}}>🗺</div>
           <div style={{fontSize:'11px',color:'#aaa'}}>지도 불러오는 중…</div>
         </div>
