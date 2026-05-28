@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.0';
+// ── TIMES 임대 매물 관리 v1.5.1 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.1';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,14 +88,14 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.0 ──
+// ── 비교표 컬럼 v1.5.1 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
   { l:'보증금',   sec:'조  건', f:ls => fmt(ls.deposit) },
-  { l:'임대료/월',             f:ls => fmt(ls.rent) },
-  { l:'관리비/월',             f:ls => fmt(ls.mgmtFee) },
-  { l:'월 합계',  hi:true,     f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
+  { l:'임대료/월', disp:<>임대료/월{<span style={{fontSize:'5pt',color:'#aaa',fontWeight:400,display:'block',letterSpacing:'.01em',lineHeight:1.4}}>부가세 별도</span>}</>, f:ls => fmt(ls.rent) },
+  { l:'관리비/월', disp:<>관리비/월{<span style={{fontSize:'5pt',color:'#aaa',fontWeight:400,display:'block',letterSpacing:'.01em',lineHeight:1.4}}>부가세 별도</span>}</>, f:ls => fmt(ls.mgmtFee) },
+  { l:'월 합계',  hi:true, disp:<>월 합계{<span style={{fontSize:'5pt',color:'#aaa',fontWeight:400,display:'block',letterSpacing:'.01em',lineHeight:1.4}}>부가세 별도</span>}</>, f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
   { l:'NOC전용평', disp:<>NOC<span style={{fontSize:'5.5pt',opacity:.75,letterSpacing:'.01em'}}>(전용평)</span></>, f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
                                   ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
   { l:'주차',     sec:'정  보', f:ls => ls.parking    || '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.0 ──
+// ── 비교표 v1.5.1 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -792,10 +792,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         {hd('📋 임대 조건')}
 
         {/* ── 사진(4:3) + 임대조건 테이블 — 헤더 아래 나란히 ── */}
-        <div style={{display:'flex',gap:'20px',marginBottom:'12px'}}>
+        <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
 
           {/* 사진 — 4:3 고정 비율 */}
-          <div style={{width:'260px',height:'195px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
+          <div style={{width:'260px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
             {(ls.photo||ls._photo)
               ? <img src={ls.photo||ls._photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
               : <div className="print-only" style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
