@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.2.8 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.2.8';
+// ── TIMES 임대 매물 관리 v1.2.9 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.2.9';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -68,51 +68,28 @@ const floorLabel = ls => {
   return ls.floor+'층'+(ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : '');
 };
 
-// ── 비교표 컬럼 v1.2.8 (단가 인라인 통합) ──
+// ── 비교표 컬럼 v1.2.9 ──
 const CMP_COLS = [
-  // 면적
-  { l:'전용면적', sec:'📐 면적',
-    f:ls => ls.exclusivePy ? ls.exclusivePy+'평'+(py2m(ls.exclusivePy)?' ('+py2m(ls.exclusivePy)+'㎡)':'') : '—' },
+  // 면적 (평만 표시)
+  { l:'전용면적', sec:'면적',
+    f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',
-    f:ls => ls.contractPy  ? ls.contractPy+'평'+(py2m(ls.contractPy)?' ('+py2m(ls.contractPy)+'㎡)':'')   : '—' },
-  // 임대 조건 (보증금·임대료·관리비에 평단가 인라인)
-  { l:'보증금', sec:'💰 임대 조건',
-    f:ls => {
-      var a = fmt(ls.deposit); if (a==='—') return a;
-      var u = (ls.contractPy && ls.deposit) ? fmtPy(ls.deposit, ls.contractPy) : null;
-      if (u && u!=='—') return <>{a}<span style={{fontSize:'6pt',color:'#b0a090',marginLeft:'3pt',fontWeight:400}}>· {u}/평</span></>;
-      return a;
-    }
-  },
-  { l:'임대료/월',
-    f:ls => {
-      var a = fmt(ls.rent); if (a==='—') return a;
-      var u = (ls.contractPy && ls.rent) ? fmtPy(ls.rent, ls.contractPy) : null;
-      if (u && u!=='—') return <>{a}<span style={{fontSize:'6pt',color:'#b0a090',marginLeft:'3pt',fontWeight:400}}>· {u}/평</span></>;
-      return a;
-    }
-  },
-  { l:'관리비/월',
-    f:ls => {
-      var a = fmt(ls.mgmtFee); if (a==='—') return a;
-      var u = (ls.contractPy && ls.mgmtFee) ? fmtPy(ls.mgmtFee, ls.contractPy) : null;
-      if (u && u!=='—') return <>{a}<span style={{fontSize:'6pt',color:'#b0a090',marginLeft:'3pt',fontWeight:400}}>· {u}/평</span></>;
-      return a;
-    }
-  },
-  { l:'월 합계', hi:true,
-    f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
-  { l:'NOC/전용평',
-    f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
-      ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
-  // 입주 조건
-  { l:'입주가능일', sec:'📅 입주 조건', f:ls => ls.moveIn   || '—' },
-  { l:'렌트프리',                      f:ls => ls.rentFree  || '—' },
-  { l:'핏아웃',                        f:ls => ls.fitOut    || '—' },
+    f:ls => ls.contractPy  ? ls.contractPy+'평'  : '—' },
+  // 임대 조건
+  { l:'보증금',    sec:'임대 조건', f:ls => fmt(ls.deposit) },
+  { l:'임대료/월',               f:ls => fmt(ls.rent) },
+  { l:'관리비/월',               f:ls => fmt(ls.mgmtFee) },
+  { l:'월 합계', hi:true,        f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
+  { l:'NOC/전용평',              f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
+                                   ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
   // 건물 정보
-  { l:'주차',    sec:'🏢 건물 정보', f:ls => ls.parking    || '—' },
-  { l:'승강기',  always:true,        f:ls => ls.elevator   || '—' },
-  { l:'사용승인',                    f:ls => ls.useAprDate || '—' },
+  { l:'주차',    sec:'건물 정보', f:ls => ls.parking    || '—' },
+  { l:'승강기',  always:true,    f:ls => ls.elevator   || '—' },
+  { l:'사용승인',                f:ls => ls.useAprDate || '—' },
+  // 입주 정보 (섹션 없이, 건물정보 하단)
+  { l:'입주가능일', f:ls => ls.moveIn   || '—' },
+  { l:'렌트프리',   f:ls => ls.rentFree || '—' },
+  { l:'핏아웃',     f:ls => ls.fitOut   || '—' },
 ];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -454,7 +431,7 @@ function ListingForm({ init, onSave, onClose }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.2.8 레이아웃 개선) ──
+// ── 매물 카드 (v1.2.9 레이아웃 개선) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCard({ ls, onEdit, onDelete, onToggle }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
@@ -573,7 +550,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.2.8 (B안 미니멀 + 세부 조정) ──
+// ── 비교표 v1.2.9 (B안 미니멀 + 세부 조정) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -585,59 +562,69 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   const chunks = [];
   for (let i=0; i<sel.length; i+=CHUNK) chunks.push(sel.slice(i,i+CHUNK));
 
-  // ── 안1 스타일 v1.2.8 (골드 상단선 섹션, 인라인 단가) ──
+  // ── v1.2.9 스타일 ──
   const labelColW = '80pt';
   const dataColW  = '130pt';
-  const BD = '0.5pt solid #e8e4dc';
-  const BD_HD = '2.5pt solid #c9a84c';
-  const BD_SEC = '1.5pt solid #c9a84c';
+  const BD    = '0.5pt solid #e8e4dc';          // 일반 셀 보더
+  const BD_HD = '2.5pt solid #c9a84c';          // 컬럼 헤더 골드 밑줄
+  const BD_SEC_TOP = '1pt solid #ccc8c0';       // 섹션 상단 — 회색(산만하지 않게)
 
-  // 컬럼 헤더 — 흰 배경, 골드 하단선
+  // 컬럼 헤더
   const thS = {
     background:'white', padding:'9pt 8pt 7pt',
-    borderLeft:BD, borderRight:BD, borderTop:'none', borderBottom:BD_HD,
+    borderLeft:'none', borderRight:'none', borderTop:'none', borderBottom:BD_HD,
     verticalAlign:'bottom', textAlign:'center',
   };
-  const thEmptyS = {background:'white', borderBottom:BD_HD, borderLeft:'none', borderRight:BD, borderTop:'none', padding:'0'};
+  const thEmptyS = {background:'white', borderBottom:BD_HD, border:'none', padding:'0'};
+
   // 라벨 셀
   const plS = {
-    background:'#fafaf8', padding:'4.5pt 6pt', color:'#666', fontWeight:600,
-    border:BD, fontSize:'7.5pt', textAlign:'center',
-    letterSpacing:'.05em', whiteSpace:'nowrap', verticalAlign:'middle',
+    background:'#fafaf8', padding:'4.5pt 6pt', color:'#555', fontWeight:600,
+    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
+    fontSize:'7.5pt', textAlign:'center', letterSpacing:'.05em',
+    whiteSpace:'nowrap', verticalAlign:'middle',
   };
   const plShi = {
-    background:'#fff8f0', padding:'5pt 6pt', color:'#8a4800', fontWeight:700,
-    border:BD, fontSize:'8pt', textAlign:'center',
-    letterSpacing:'.05em', whiteSpace:'nowrap', verticalAlign:'middle',
+    background:'#fff8f0', padding:'5pt 6pt', color:'#7a3800', fontWeight:700,
+    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
+    fontSize:'8pt', textAlign:'center', letterSpacing:'.05em',
+    whiteSpace:'nowrap', verticalAlign:'middle',
   };
-  // 주소 행 — 베이지
+
+  // 주소 행
   const addrLabelS = {
     background:'#f0ece2', padding:'4pt 6pt', color:'#6b4f2a', fontWeight:700,
-    border:BD, fontSize:'7pt', textAlign:'center', letterSpacing:'.1em', verticalAlign:'middle',
+    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
+    fontSize:'7pt', textAlign:'center', letterSpacing:'.1em', verticalAlign:'middle',
   };
   const addrDataS = {
     background:'#f5f0e8', padding:'4pt 8pt', color:'#5a4a2a',
-    border:BD, fontSize:'7pt', textAlign:'center', lineHeight:1.5, verticalAlign:'middle',
+    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
+    fontSize:'7pt', textAlign:'center', lineHeight:1.5, verticalAlign:'middle',
   };
-  // 섹션 — 라벨열만 텍스트, 골드 상단선 전체 공유
+
+  // 섹션 행 — 좌우 보더 없음, 상단 회색선만
   const secLblS = {
-    background:'white', padding:'4pt 6pt', color:'#b07c20', fontWeight:700,
-    borderTop:BD_SEC, borderLeft:BD, borderRight:BD, borderBottom:BD,
-    fontSize:'7pt', textAlign:'center', letterSpacing:'.18em', verticalAlign:'middle',
+    background:'white', padding:'5pt 6pt', color:'#888', fontWeight:700,
+    borderTop:BD_SEC_TOP, borderBottom:'none', borderLeft:'none', borderRight:'none',
+    fontSize:'6.5pt', textAlign:'left', letterSpacing:'.2em', verticalAlign:'middle',
   };
   const secCellS = {
     background:'white',
-    borderTop:BD_SEC, borderLeft:BD, borderRight:BD, borderBottom:BD,
-    padding:'4pt 6pt',
+    borderTop:BD_SEC_TOP, borderBottom:'none', borderLeft:'none', borderRight:'none',
+    padding:'0',
   };
-  // 데이터 셀
+
+  // 데이터 셀 (좌우 보더 제거, 상하만)
   const tdS = (s, hi) => ({
-    padding: hi?'5pt 8pt':'4.5pt 8pt',
-    border:BD, fontSize: hi?'9pt':'7.5pt', fontWeight:hi?700:400,
+    padding: hi?'5pt 10pt':'4.5pt 10pt',
+    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
+    fontSize: hi?'9.5pt':'8.5pt',
+    fontWeight: hi?700:500,
     textAlign:'center', verticalAlign:'middle',
     background: hi?'#fff8f0':(s?'#fafaf8':'white'),
-    color: hi?'#8a4800':'#1a1a1a',
-    letterSpacing:'.02em',
+    color: hi?'#7a3800':'#0d1b2a',
+    letterSpacing:'.01em',
   });
 
   return (
@@ -673,8 +660,8 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                       {l.buildingName||'(이름없음)'}
                     </div>
                     {l.floor && (
-                      <div style={{display:'inline-block',background:'rgba(201,168,76,0.15)',color:'#b07c20',fontSize:'7.5pt',fontWeight:700,padding:'1.5pt 8pt',border:'0.5pt solid #e0c87a',letterSpacing:'.04em'}}>
-                        {l.floor}층{l.totalFloor?' / 총 '+l.totalFloor+'층':''}
+                      <div style={{fontSize:'7.5pt',color:'#b07c20',fontWeight:600,marginTop:'3pt',letterSpacing:'.06em'}}>
+                        {l.floor}층{l.totalFloor?' · 총 '+l.totalFloor+'층':''}
                       </div>
                     )}
                   </th>
@@ -740,7 +727,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               {sel.map(l=>(
                 <th key={l.id} style={{background:'white',padding:'10px 14px',textAlign:'center',borderBottom:'3px solid #c9a84c',minWidth:'150px',borderRight:'0.5px solid #e8e4dc'}}>
                   <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'16px',fontWeight:700,color:'#0d1b2a',marginBottom:'4px'}}>{l.buildingName}</div>
-                  {l.floor && <div style={{display:'inline-block',fontSize:'11px',color:'#b07c20',background:'rgba(201,168,76,0.12)',padding:'2px 10px',border:'0.5px solid #e0c87a',letterSpacing:'.04em'}}>{l.floor}층{l.totalFloor?' / 총 '+l.totalFloor+'층':''}</div>}
+                  {l.floor && <div style={{fontSize:'11px',color:'#b07c20',fontWeight:600,marginTop:'3px',letterSpacing:'.06em'}}>{l.floor}층{l.totalFloor?' · 총 '+l.totalFloor+'층':''}</div>}
                 </th>
               ))}
             </tr>
@@ -764,16 +751,15 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                   <React.Fragment key={col.l}>
                     {col.sec && (
                       <tr>
-                        <td style={{background:'white',borderTop:'2px solid #c9a84c',borderBottom:'0.5px solid #eee',borderRight:'0.5px solid #eee',padding:'5px 12px',fontSize:'11px',fontWeight:700,color:'#b07c20',letterSpacing:'.16em',textAlign:'center'}}>
+                        <td colSpan={sel.length+1} style={{background:'white',borderTop:'1px solid #ccc8c0',borderBottom:'none',padding:'6px 12px',fontSize:'10px',fontWeight:700,color:'#999',letterSpacing:'.2em',textAlign:'left'}}>
                           {col.sec.replace(/^[^\s]+\s/,'')}
                         </td>
-                        {sel.map(function(l){ return <td key={l.id} style={{background:'white',borderTop:'2px solid #c9a84c',borderBottom:'0.5px solid #eee',borderRight:'0.5px solid #eee',padding:'5px'}}></td>; })}
                       </tr>
                     )}
                     <tr>
-                      <td style={{padding:'6px 12px',background:col.hi?'#fff8f0':'#fafaf8',fontWeight:col.hi?700:600,fontSize:'12px',color:col.hi?'#8a4800':'#555',textAlign:'center',letterSpacing:'.06em',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #f0ede6'}}>{col.l}</td>
+                      <td style={{padding:'6px 12px',background:col.hi?'#fff8f0':'#fafaf8',fontWeight:col.hi?700:600,fontSize:'12px',color:col.hi?'#7a3800':'#555',textAlign:'center',letterSpacing:'.05em',borderBottom:'0.5px solid #f0ede6'}}>{col.l}</td>
                       {sel.map(function(l){ return (
-                        <td key={l.id} style={{padding:'6px 12px',textAlign:'center',borderRight:'0.5px solid #f0ede6',borderBottom:'0.5px solid #f0ede6',background:col.hi?'#fff8f0':(idx%2===0?'white':'#fafaf8'),fontWeight:col.hi?700:400,color:col.hi?'#8a4800':'#333',fontSize:col.hi?'14px':'12px',letterSpacing:'.02em'}}>
+                        <td key={l.id} style={{padding:'6px 12px',textAlign:'center',borderBottom:'0.5px solid #f0ede6',background:col.hi?'#fff8f0':(idx%2===0?'white':'#fafaf8'),fontWeight:col.hi?700:500,color:col.hi?'#7a3800':'#0d1b2a',fontSize:col.hi?'14px':'13px',letterSpacing:'.01em'}}>
                           {col.f(l)}
                         </td>
                       ); })}
