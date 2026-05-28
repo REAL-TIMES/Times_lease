@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.9 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.9';
+// ── TIMES 임대 매물 관리 v1.5.0 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.0';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.9 ──
+// ── 비교표 컬럼 v1.5.0 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.9 ──
+// ── 비교표 v1.5.0 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1194,7 +1194,6 @@ function App() {
                   style={{padding:'10px 24px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>+ 첫 매물 등록</button>
               </div>
             ) : (
-              <div style={{fontSize:'11px',color:'#bbb',marginBottom:'8px',textAlign:'right'}}>✦ 카드를 드래그해서 순서를 변경할 수 있습니다</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'16px'}}>
                 {listings.map(ls=>(
                   <LCard key={ls.id} ls={ls}
