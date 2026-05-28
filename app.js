@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.6.2 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.2';
+// ── TIMES 임대 매물 관리 v1.6.3 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.3';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.2 ──
+// ── 비교표 컬럼 v1.6.3 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.2 ──
+// ── 비교표 v1.6.3 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -794,17 +794,19 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         {/* ── 사진(4:3) + 임대조건 테이블 — 헤더 아래 나란히 ── */}
         <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
 
-          {/* 사진 — 4:3 고정 비율 */}
-          <div style={{width:'260px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
+          {/* 사진 — 4:3 / 없으면 카카오맵 / 없으면 로고 */}
+          <div style={{width:'260px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'180px',display:'flex',alignItems:'stretch'}}>
             {(ls.photo||ls._photo)
-              ? <img src={ls.photo||ls._photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-              : <div style={{width:'100%',height:'100%',minHeight:'160px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#f5f2eb',gap:'10px'}}>
-                  {logoSrc
-                    ? <img src={logoSrc} style={{maxWidth:'70%',maxHeight:'60px',objectFit:'contain',opacity:.55}} />
-                    : <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'13px',fontWeight:600,color:'#c9a84c',letterSpacing:'.22em',textAlign:'center',lineHeight:1.4}}><div>TIMES</div><div style={{fontSize:'10px',letterSpacing:'.25em',fontWeight:400}}>REAL ESTATE</div></div>
-                  }
-                  <div style={{fontSize:'8px',color:'#ccc',letterSpacing:'.15em',marginTop:'6px'}}>사진 준비 중</div>
-                </div>
+              ? <img src={ls.photo||ls._photo} style={{width:'100%',objectFit:'cover',display:'block'}} />
+              : (ls.address && kakaoKey)
+                ? <KakaoMapView address={ls.address} kakaoKey={kakaoKey} />
+                : <div style={{width:'100%',flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#f5f2eb',gap:'10px',padding:'20px 0'}}>
+                    {logoSrc
+                      ? <img src={logoSrc} style={{maxWidth:'70%',maxHeight:'60px',objectFit:'contain',opacity:.55}} />
+                      : <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'13px',fontWeight:600,color:'#c9a84c',letterSpacing:'.22em',textAlign:'center',lineHeight:1.4}}><div>TIMES</div><div style={{fontSize:'10px',letterSpacing:'.25em',fontWeight:400}}>REAL ESTATE</div></div>
+                    }
+                    <div style={{fontSize:'8px',color:'#ccc',letterSpacing:'.15em',marginTop:'6px'}}>사진 준비 중</div>
+                  </div>
             }
           </div>
 
