@@ -1,6 +1,6 @@
-// ── TIMES 임대 매물 관리 v1.6.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.0';
-const { useState, useEffect, useCallback } = React;
+// ── TIMES 임대 매물 관리 v1.6.1 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.1';
+const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
 const PY  = 3.30579;
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.0 ──
+// ── 비교표 컬럼 v1.6.1 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.0 ──
+// ── 비교표 v1.6.1 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -705,7 +705,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 리포트 카드 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc, isFirst }) {
+function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc, kakaoKey, isFirst }) {
   const noc    = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
   const totMon = n(ls.rent)+n(ls.mgmtFee);
@@ -921,6 +921,81 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 카카오맵 뷰 ──
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function KakaoMapView({ address, kakaoKey }) {
+  var containerRef = useRef(null);
+  var [mapStatus, setMapStatus] = useState('loading');
+
+  useEffect(function() {
+    if (!address || !kakaoKey) { setMapStatus('nokey'); return; }
+    setMapStatus('loading');
+
+    function initMap() {
+      if (!containerRef.current) return;
+      try {
+        var geocoder = new window.kakao.maps.services.Geocoder();
+        geocoder.addressSearch(address, function(result, status) {
+          if (status === window.kakao.maps.services.Status.OK) {
+            var coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
+            var mapObj = new window.kakao.maps.Map(containerRef.current, { center: coords, level: 3 });
+            new window.kakao.maps.Marker({ map: mapObj, position: coords });
+            setMapStatus('ok');
+          } else {
+            setMapStatus('error');
+          }
+        });
+      } catch(e) { setMapStatus('error'); }
+    }
+
+    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+      initMap(); return;
+    }
+    // 이미 로드 중이면 기다림
+    var existing = document.getElementById('kakao-sdk-script');
+    if (existing) {
+      var t = setInterval(function() {
+        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+          clearInterval(t); initMap();
+        }
+      }, 200);
+      return;
+    }
+    // SDK 동적 로드
+    var script = document.createElement('script');
+    script.id = 'kakao-sdk-script';
+    script.src = '//dapi.kakao.com/v2/maps/sdk.js?appkey=' + kakaoKey + '&libraries=services&autoload=false';
+    script.onload = function() { window.kakao.maps.load(initMap); };
+    script.onerror = function() { setMapStatus('error'); };
+    document.head.appendChild(script);
+  }, [address, kakaoKey]);
+
+  return (
+    <div style={{width:'100%',height:'100%',position:'relative',background:'#f0ede6',minHeight:'180px'}}>
+      <div ref={containerRef} style={{width:'100%',height:'100%',minHeight:'180px'}} />
+      {mapStatus==='loading' && (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'8px'}}>
+          <div style={{fontSize:'20px'}}>🗺</div>
+          <div style={{fontSize:'11px',color:'#aaa'}}>지도 불러오는 중…</div>
+        </div>
+      )}
+      {mapStatus==='error' && (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'6px'}}>
+          <div style={{fontSize:'18px'}}>📍</div>
+          <div style={{fontSize:'11px',color:'#aaa'}}>주소를 찾을 수 없습니다</div>
+        </div>
+      )}
+      {mapStatus==='nokey' && (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'6px'}}>
+          <div style={{fontSize:'18px'}}>🔑</div>
+          <div style={{fontSize:'11px',color:'#aaa',textAlign:'center',padding:'0 12px'}}>출력 정보 설정에서<br/>카카오맵 API 키를 입력하세요</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 삭제 확인 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function ConfirmModal({ message, subMessage, onConfirm, onCancel, busy }) {
@@ -971,6 +1046,16 @@ function InfoPanel({ info, setInfo, onDisconnect }) {
           {inp('담당자', 'agentName', '성재윤')}
           {inp('연락처', 'agentPhone', '010-6655-5445')}
           <div style={{gridColumn:'1/-1'}}>
+            <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>카카오맵 API 키 (리포트 지도 표시)</div>
+            <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
+              <input value={info.kakaoKey||''} placeholder="카카오 JavaScript 앱 키"
+                type="password" onChange={e=>f('kakaoKey',e.target.value)}
+                style={{flex:1,fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
+              <a href="https://developers.kakao.com" target="_blank"
+                style={{fontSize:'11px',color:'#3a6fd8',whiteSpace:'nowrap',flexShrink:0}}>키 발급 →</a>
+            </div>
+          </div>
+          <div style={{gridColumn:'1/-1'}}>
             <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>로고 이미지</div>
             <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
               {info.logoSrc && <img src={info.logoSrc} style={{height:'28px',objectFit:'contain',border:'1px solid #e0dcd4'}} />}
@@ -1009,7 +1094,7 @@ function App() {
   const [delBusy,   setDelBusy]    = useState(false);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
-    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
+    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'', kakaoKey:'',
     ...loadInfo()
   }));
   const [reportTitle, setRT] = useState('');
@@ -1367,7 +1452,7 @@ function App() {
                   <LReportCard key={l.id} ls={l} isFirst={i===0}
                     reportTitle={reportTitle} reportDate={reportDate}
                     bizName={info.bizName} bizAddr={info.bizAddr}
-                    agentName={info.agentName} agentPhone={info.agentPhone} logoSrc={info.logoSrc} />
+                    agentName={info.agentName} agentPhone={info.agentPhone} logoSrc={info.logoSrc} kakaoKey={info.kakaoKey} />
                 ))}
           </div>
         )}
