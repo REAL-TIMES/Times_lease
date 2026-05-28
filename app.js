@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.3.9 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.9';
+// ── TIMES 임대 매물 관리 v1.4.0 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.0';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.3.9 ──
+// ── 비교표 컬럼 v1.4.0 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.9 ──
+// ── 비교표 v1.4.0 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -481,7 +481,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
     borderLeft:'none', borderRight:'none', borderTop:'none', borderBottom:BD_HD,
     verticalAlign:'bottom', textAlign:'center',
   };
-  const thEmptyS = {background:'white', borderBottom:BD_HD, border:'none', padding:'0'};
+  const thEmptyS = {background:'white', borderLeft:BD, borderTop:'none', borderRight:'none', borderBottom:BD_HD, padding:'0'};
   const plS = {
     background:'#fafaf8', padding:'4.5pt 6pt', color:'#555', fontWeight:600,
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
@@ -542,7 +542,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
           </div>
 
           {/* 표 — width:100%로 항상 페이지 폭 채움 */}
-          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
+          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:chunk.length===CHUNK?'100%':(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
             <colgroup>
               <col style={{width:labelColW}} />
               {chunk.map(l=><col key={l.id} style={{width:dataColW}} />)}
@@ -732,24 +732,25 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
       {/* ── 헤더 ── */}
       <div style={{background:'white',padding:'16px 20px 14px',borderBottom:'2.5px solid #0d1b2a'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-          {/* 좌측: 서브타이틀 + 건물명 + 주소 */}
-          <div>
-            <div style={{fontSize:'9px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'10px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',fontWeight:600,color:'#0d1b2a',lineHeight:1.2}}>
-              {ls.buildingName}
+        {/* 서브타이틀 */}
+        <div style={{fontSize:'9px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'10px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
+        {/* 건물명 ↔ 문서제목 동일 라인 */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'5px'}}>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',fontWeight:600,color:'#0d1b2a',lineHeight:1.2}}>
+            {ls.buildingName}
+          </div>
+          {reportTitle && (
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'26px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,textAlign:'right',marginLeft:'16px'}}>
+              {reportTitle}
             </div>
-            {ls.address && <div style={{fontSize:'10px',color:'#888',marginTop:'5px'}}>{ls.address}</div>}
-          </div>
-          {/* 우측: 문서제목(보고서 제목) + 날짜 */}
-          <div style={{textAlign:'right',flexShrink:0,marginLeft:'16px'}}>
-            {reportTitle && (
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'26px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'6px'}}>
-                {reportTitle}
-              </div>
-            )}
-            <div style={{fontSize:'11px',color:'#888',fontWeight:400}}>{reportDate}</div>
-          </div>
+          )}
+        </div>
+        {/* 주소 ↔ 날짜 동일 라인 */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          {ls.address
+            ? <div style={{fontSize:'10px',color:'#888'}}>{ls.address}</div>
+            : <div></div>}
+          <div style={{fontSize:'11px',color:'#888',fontWeight:400,flexShrink:0,marginLeft:'16px'}}>{reportDate}</div>
         </div>
       </div>
 
@@ -759,10 +760,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
 
           {/* 사진 — 임대조건 높이에 맞춤 */}
-          <div style={{width:'240px',height:'180px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
+          <div style={{width:'250px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',display:'flex',alignItems:'stretch'}}>
             {ls.photo
-              ? <img src={ls.photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-              : <div className="print-only" style={{height:'180px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
+              ? <img src={ls.photo} style={{width:'100%',objectFit:'cover',display:'block'}} />
+              : <div className="print-only" style={{minHeight:'180px',flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
             }
           </div>
 
