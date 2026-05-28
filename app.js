@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.4 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.4';
+// ── TIMES 임대 매물 관리 v1.5.5 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.5';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.4 ──
+// ── 비교표 컬럼 v1.5.5 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.4 ──
+// ── 비교표 v1.5.5 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -798,7 +798,13 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           <div style={{width:'260px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
             {(ls.photo||ls._photo)
               ? <img src={ls.photo||ls._photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-              : <div className="print-only" style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
+              : <div style={{width:'100%',height:'100%',minHeight:'160px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#f5f2eb',gap:'10px'}}>
+                  {logoSrc
+                    ? <img src={logoSrc} style={{maxWidth:'70%',maxHeight:'60px',objectFit:'contain',opacity:.55}} />
+                    : <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'13px',fontWeight:600,color:'#c9a84c',letterSpacing:'.22em',textAlign:'center',lineHeight:1.4}}><div>TIMES</div><div style={{fontSize:'10px',letterSpacing:'.25em',fontWeight:400}}>REAL ESTATE</div></div>
+                  }
+                  <div style={{fontSize:'8px',color:'#ccc',letterSpacing:'.15em',marginTop:'6px'}}>사진 준비 중</div>
+                </div>
             }
           </div>
 
@@ -825,6 +831,13 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
             {ls.rent    && amtCard('RENT / 임대료',      fmt(ls.rent),      false)}
             {ls.mgmtFee && amtCard('MGMT / 관리비',      fmt(ls.mgmtFee),   false)}
             {totMon > 0 && amtCard('TOTAL / 월 합계',    fmt(totMon),       true)}
+          </div>
+        )}
+
+        {/* ── 부가세 별도 표시 ── */}
+        {(ls.rent || ls.mgmtFee) && (
+          <div style={{textAlign:'right',fontSize:'10px',color:'#aaa',letterSpacing:'.04em',marginTop:'-8px',marginBottom:'10px',fontWeight:400}}>
+            임대료·관리비 부가세 별도
           </div>
         )}
 
