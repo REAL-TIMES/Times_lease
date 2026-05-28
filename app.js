@@ -1,11 +1,11 @@
-// ── TIMES 임대 매물 관리 v1.3.3 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.3';
+// ── TIMES 임대 매물 관리 v1.3.4 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.4';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
 const PY  = 3.30579;
-const STO_CRED = 'times-lease-sb';
-const STO_INFO = 'times-lease-info';
+const STO_CRED = 'times-lease-sb';   // 자격증명 localStorage key
+const STO_INFO = 'times-lease-info'; // 출력 정보 localStorage key
 const TBL = 'lease_listings';
 
 // ── Supabase 클라이언트 ──
@@ -61,7 +61,10 @@ const blank = () => ({
   photo:null, printSel:true,
 });
 const loadInfo = () => { try { return JSON.parse(localStorage.getItem(STO_INFO)||'{}'); } catch { return {}; } };
-// 주소에서 시·구 제거, 동+지번만 반환
+const saveInfo = obj => localStorage.setItem(STO_INFO, JSON.stringify(obj));
+// 층 레이블
+const floorLabel = ls => ls.floor + '층' + (ls.totalFloor ? ' / 총 ' + ls.totalFloor + '층' : '');
+// 주소 단축 (시/구 제거, 동+지번만)
 const shortAddr = addr => {
   if (!addr) return '—';
   var parts = addr.split(' ');
@@ -72,91 +75,24 @@ const shortAddr = addr => {
   }
   return addr;
 };
-const saveInfo = obj => localStorage.setItem(STO_INFO, JSON.stringify(obj));
 
-const floorLabel = ls => {
-  if (!ls.floor) return '—';
-  return ls.floor+'층'+(ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : '');
-};
-
-// ── 비교표 컬럼 v1.3.3 ──
+// ── 비교표 컬럼 v1.3.4 ──
 const CMP_COLS = [
-  // 면적 (평만 표시)
-  { l:'전용면적', sec:'면적',
-    f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
-  { l:'계약면적',
-    f:ls => ls.contractPy  ? ls.contractPy+'평'  : '—' },
-  // 임대 조건
-  { l:'보증금',    sec:'임대 조건', f:ls => fmt(ls.deposit) },
-  { l:'임대료/월',               f:ls => fmt(ls.rent) },
-  { l:'관리비/월',               f:ls => fmt(ls.mgmtFee) },
-  { l:'월 합계', hi:true,        f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
-  { l:'NOC/전용평',              f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
-                                   ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
-  // 건물 정보
-  { l:'주차',    sec:'건물 정보', f:ls => ls.parking    || '—' },
-  { l:'승강기',  always:true,    f:ls => ls.elevator   || '—' },
-  { l:'사용승인',                f:ls => ls.useAprDate || '—' },
-  // 입주 정보 (섹션 없이, 건물정보 하단)
-  { l:'입주가능일', f:ls => ls.moveIn   || '—' },
-  { l:'렌트프리',   f:ls => ls.rentFree || '—' },
-  { l:'핏아웃',     f:ls => ls.fitOut   || '—' },
+  { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
+  { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
+  { l:'보증금',   sec:'조  건', f:ls => fmt(ls.deposit) },
+  { l:'임대료/월',             f:ls => fmt(ls.rent) },
+  { l:'관리비/월',             f:ls => fmt(ls.mgmtFee) },
+  { l:'월 합계',  hi:true,     f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
+  { l:'NOC/전용평',            f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
+                                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
+  { l:'주차',     sec:'정  보', f:ls => ls.parking    || '—' },
+  { l:'승강기',   always:true,  f:ls => ls.elevator   || '—' },
+  { l:'사용승인',              f:ls => ls.useAprDate || '—' },
+  { l:'입주가능일',            f:ls => ls.moveIn     || '—' },
+  { l:'렌트프리',              f:ls => ls.rentFree   || '—' },
+  { l:'핏아웃',                f:ls => ls.fitOut     || '—' },
 ];
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 면적 입력 컴포넌트 (평 ↔ ㎡ 자동변환) ──
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function AreaInput({ label, pyKey, ls, set }) {
-  const [m2Draft,   setM2Draft]   = useState('');
-  const [m2Focused, setM2Focused] = useState(false);
-
-  const pyVal    = ls[pyKey] || '';
-  const pyNum    = parseFloat(pyVal);
-  const m2Computed = (pyVal && !isNaN(pyNum) && pyNum > 0) ? (pyNum * PY).toFixed(2) : '';
-
-  const handlePyChange = (v) => { set(pyKey, v); };
-
-  const handleM2Focus = () => {
-    setM2Focused(true);
-    setM2Draft(m2Computed);
-  };
-  const handleM2Change = (v) => {
-    setM2Draft(v);
-    const m = parseFloat(v);
-    if (!isNaN(m) && m > 0) {
-      set(pyKey, (m / PY).toFixed(2));
-    } else if (!v) {
-      set(pyKey, '');
-    }
-  };
-  const handleM2Blur = () => { setM2Focused(false); };
-
-  const m2DisplayVal = m2Focused ? m2Draft : m2Computed;
-
-  return (
-    <div>
-      <div style={{fontSize:'10px',color:'#888',marginBottom:'4px'}}>{label}</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 18px 1fr',alignItems:'start',gap:'3px'}}>
-        <div>
-          <input value={pyVal} placeholder="35.5"
-            onChange={e => handlePyChange(e.target.value)}
-            style={{width:'100%',fontSize:'12px',padding:'5px 8px',border:'1px solid #e0dcd4',boxSizing:'border-box'}} />
-          <div style={{fontSize:'9px',color:'#aaa',textAlign:'center',marginTop:'2px'}}>평</div>
-        </div>
-        <div style={{textAlign:'center',paddingTop:'5px',color:'#bbb',fontSize:'13px'}}>↔</div>
-        <div>
-          <input value={m2DisplayVal} placeholder="117.3"
-            onFocus={handleM2Focus}
-            onChange={e => handleM2Change(e.target.value)}
-            onBlur={handleM2Blur}
-            style={{width:'100%',fontSize:'12px',padding:'5px 8px',border:'1px solid #e0dcd4',boxSizing:'border-box'}} />
-          <div style={{fontSize:'9px',color:'#aaa',textAlign:'center',marginTop:'2px'}}>㎡</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 네이버 텍스트 파싱 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -164,59 +100,47 @@ function NaverParseModal({ onParsed, onClose }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState('');
-
   const parse = async () => {
     if (!text.trim()) { setErr('텍스트를 붙여넣어 주세요'); return; }
     setBusy(true); setErr('');
     try {
       const res = await fetch('/api/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ text: text.trim() })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'API 오류 ' + res.status);
       onParsed(data);
-    } catch(e) {
-      setErr('파싱 실패: ' + (e.message || String(e)));
-    } finally { setBusy(false); }
+    } catch(e) { setErr('파싱 실패: ' + (e.message || String(e))); }
+    finally { setBusy(false); }
   };
-
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.88)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
-      <div style={{background:'white',width:'100%',maxWidth:'580px',padding:'24px',boxShadow:'0 8px 40px rgba(0,0,0,0.3)'}}>
+      <div style={{background:'white',width:'100%',maxWidth:'580px',padding:'24px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'16px',borderBottom:'2px solid #0d1b2a',paddingBottom:'12px'}}>
           <div>
             <div style={{fontSize:'8px',letterSpacing:'.2em',color:'#c9a84c',marginBottom:'4px'}}>NAVER LISTING IMPORT</div>
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a'}}>네이버 매물 자동 입력</div>
             <div style={{fontSize:'11px',color:'#888',marginTop:'3px'}}>매물 페이지 텍스트를 붙여넣으면 AI가 자동으로 분석합니다</div>
           </div>
-          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'20px',color:'#888',lineHeight:1,marginLeft:'12px'}}>×</button>
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'20px',color:'#888'}}>×</button>
         </div>
-        <div style={{background:'#f5f2eb',border:'1px solid #e0dcd4',padding:'10px 12px',marginBottom:'14px',fontSize:'11px',color:'#666',lineHeight:1.8}}>
+        <div style={{background:'#f5f2eb',padding:'10px 12px',marginBottom:'14px',fontSize:'11px',color:'#666',lineHeight:1.8}}>
           <strong style={{color:'#0d1b2a',display:'block',marginBottom:'4px'}}>📋 사용 방법</strong>
           1. 네이버 부동산 매물 상세 페이지 열기<br/>
-          2. 페이지에서 <strong>Ctrl+A</strong> → <strong>Ctrl+C</strong><br/>
-          3. 아래 텍스트 박스에 <strong>Ctrl+V</strong><br/>
-          4. <strong>자동 입력</strong> 버튼 클릭 → 건물명·주소만 직접 확인
+          2. <strong>Ctrl+A</strong> → <strong>Ctrl+C</strong> (전체 복사)<br/>
+          3. 아래 박스에 <strong>Ctrl+V</strong> (붙여넣기)<br/>
+          4. <strong>자동 입력</strong> 클릭 → 건물명·주소 직접 확인
         </div>
-        <textarea value={text} onChange={e => setText(e.target.value)}
-          placeholder="여기에 네이버 부동산 매물 텍스트를 붙여넣으세요 (Ctrl+V)"
-          rows={11}
+        <textarea value={text} onChange={e=>setText(e.target.value)}
+          placeholder="네이버 부동산 매물 텍스트를 여기에 붙여넣으세요" rows={10}
           style={{width:'100%',fontSize:'12px',padding:'10px',border:'1px solid #e0dcd4',resize:'vertical',fontFamily:'inherit',lineHeight:1.7,boxSizing:'border-box'}} />
-        {err && (
-          <div style={{fontSize:'11px',color:'#c0392b',background:'#fff5f4',border:'1px solid #f5c6c2',padding:'8px 10px',marginTop:'8px',lineHeight:1.5}}>
-            ⚠ {err}
-          </div>
-        )}
-        <div style={{fontSize:'10px',color:'#aaa',marginTop:'10px',lineHeight:1.6}}>
-          💡 건물명과 주소는 자동 추출이 어려울 수 있습니다. 파싱 후 폼에서 직접 확인·입력해 주세요.
-        </div>
+        {err && <div style={{fontSize:'11px',color:'#c0392b',background:'#fff5f4',padding:'8px',marginTop:'8px'}}>{err}</div>}
+        <div style={{fontSize:'10px',color:'#aaa',marginTop:'8px'}}>💡 건물명·주소는 파싱 후 직접 확인해 주세요.</div>
         <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'14px'}}>
-          <button onClick={onClose}
-            style={{padding:'8px 18px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit',color:'#555'}}>취소</button>
+          <button onClick={onClose} style={{padding:'8px 18px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>취소</button>
           <button onClick={parse} disabled={busy}
-            style={{padding:'8px 22px',background:busy?'#aaa':'#0d1b2a',color:'#c9a84c',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit',fontWeight:600,letterSpacing:'.04em',minWidth:'110px'}}>
+            style={{padding:'8px 22px',background:busy?'#aaa':'#0d1b2a',color:'#c9a84c',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit',fontWeight:600,minWidth:'110px'}}>
             {busy ? '⏳ 분석 중…' : '✨ 자동 입력'}
           </button>
         </div>
@@ -255,6 +179,7 @@ function SBSetup({ onConnect }) {
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'9px',letterSpacing:'.25em',color:'#c9a84c',marginBottom:'6px'}}>TIMES REAL ESTATE</div>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',fontWeight:600,color:'#0d1b2a',marginBottom:'4px'}}>임대 매물 관리</div>
         <div style={{fontSize:'11px',color:'#888',marginBottom:'24px'}}>Supabase 프로젝트에 연결하세요</div>
+
         <div style={{marginBottom:'12px'}}>
           <div style={{fontSize:'10px',color:'#888',marginBottom:'3px'}}>Supabase Project URL</div>
           <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co"
@@ -262,11 +187,16 @@ function SBSetup({ onConnect }) {
         </div>
         <div style={{marginBottom:'20px'}}>
           <div style={{fontSize:'10px',color:'#888',marginBottom:'3px'}}>anon / public API Key</div>
-          <input value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJ..." type="password"
+          <input value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJ..."
+            type="password"
             style={{width:'100%',fontSize:'12px',padding:'8px 10px',border:'1px solid #e0dcd4',outline:'none'}} />
-          <div style={{fontSize:'10px',color:'#aaa',marginTop:'4px'}}>Supabase 대시보드 → Settings → API → anon public key</div>
+          <div style={{fontSize:'10px',color:'#aaa',marginTop:'4px'}}>
+            Supabase 대시보드 → Settings → API → anon public key
+          </div>
         </div>
+
         {err && <div style={{fontSize:'11px',color:'#c0392b',background:'#fff5f4',padding:'8px',marginBottom:'12px'}}>{err}</div>}
+
         <div style={{background:'#f5f2eb',padding:'10px 12px',fontSize:'10px',color:'#888',marginBottom:'16px',lineHeight:1.7}}>
           <strong style={{color:'#0d1b2a'}}>Supabase 테이블 생성 SQL</strong><br/>
           SQL Editor에서 먼저 실행하세요:<br/>
@@ -276,6 +206,7 @@ function SBSetup({ onConnect }) {
             CREATE POLICY "allow_all" ON lease_listings FOR ALL USING (true);
           </code>
         </div>
+
         <button onClick={connect} disabled={busy}
           style={{width:'100%',background:busy?'#888':'#0d1b2a',color:'#c9a84c',border:'none',padding:'10px',fontSize:'13px',cursor:busy?'not-allowed':'pointer',fontFamily:'inherit',letterSpacing:'.05em'}}>
           {busy ? '연결 중…' : '연결하기'}
@@ -289,36 +220,11 @@ function SBSetup({ onConnect }) {
 // ── 입력 폼 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function ListingForm({ init, onSave, onClose }) {
-  const [ls, setLs]          = useState(init || blank());
-  const [busy, setBusy]      = useState(false);
+  const [ls, setLs]       = useState(init || blank());
+  const [busy, setBusy]   = useState(false);
   const [showNaver, setShowNaver] = useState(false);
   const set = (k,v) => setLs(p=>({...p,[k]:v}));
-
-  const fld = (label, key, ph, type, full) => (
-    <div style={{gridColumn:full?'1 / -1':'auto'}}>
-      <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>{label}</div>
-      <input type={type||'text'} value={ls[key]||''} placeholder={ph||''}
-        onChange={e=>set(key,e.target.value)}
-        style={{width:'100%',fontSize:'12px',padding:'5px 8px',border:'1px solid #e0dcd4'}} />
-    </div>
-  );
-
-  const handlePhoto = e => {
-    const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = ev => set('photo', ev.target.result);
-    r.readAsDataURL(f);
-  };
-
-  const handleSave = async () => {
-    if (!ls.buildingName.trim()) { alert('건물명을 입력하세요'); return; }
-    setBusy(true);
-    try { await dbUpsert(ls); onSave(ls); }
-    catch(e) { alert('저장 실패: '+e.message); }
-    finally { setBusy(false); }
-  };
-
-  const handleParsed = (parsed) => {
+  const handleParsed = parsed => {
     setLs(prev => ({
       ...prev,
       buildingName: parsed.buildingName || prev.buildingName,
@@ -339,229 +245,220 @@ function ListingForm({ init, onSave, onClose }) {
     setShowNaver(false);
   };
 
-  return (
-    <>
-      {showNaver && <NaverParseModal onParsed={handleParsed} onClose={() => setShowNaver(false)} />}
-
-      <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
-        <div style={{background:'white',width:'100%',maxWidth:'680px',maxHeight:'90vh',overflowY:'auto',padding:'24px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',borderBottom:'2px solid #0d1b2a',paddingBottom:'10px'}}>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a'}}>
-              {init ? '매물 수정' : '새 매물 등록'}
-            </div>
-            <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'18px',color:'#888'}}>×</button>
-          </div>
-
-          {/* 네이버 자동입력 배너 */}
-          <div style={{marginBottom:'18px',padding:'12px 14px',background:'#f0f6ff',border:'1px solid #b8d0f5',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
-            <div>
-              <div style={{fontSize:'12px',fontWeight:600,color:'#1a3a6e',marginBottom:'2px'}}>📋 네이버 매물 텍스트로 자동 입력</div>
-              <div style={{fontSize:'11px',color:'#5a7aaa'}}>네이버 부동산 매물 페이지 텍스트를 붙여넣으면 AI가 자동으로 필드를 채워드립니다</div>
-            </div>
-            <button onClick={() => setShowNaver(true)}
-              style={{flexShrink:0,padding:'7px 16px',background:'#1a3a6e',color:'white',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:'inherit',fontWeight:600,whiteSpace:'nowrap'}}>
-              ✨ 자동 입력
-            </button>
-          </div>
-
-          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>기본 정보</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-            {fld('건물명 *',            'buildingName', '예) 반포 파인빌딩')}
-            {fld('별칭 (카드·비교표용)', 'alias',        '예) 반포파인 301호')}
-            {fld('주소', 'address', '서울특별시 서초구...', 'text', true)}
-            {fld('층 (해당층)', 'floor', '예) 3')}
-            {fld('총층',       'totalFloor', '예) 6')}
-            {fld('주차',     'parking',  '예) 전용 2대')}
-            {fld('승강기',   'elevator', '예) 2대')}
-          </div>
-
-          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>면적</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-            <AreaInput label="전용면적" pyKey="exclusivePy" ls={ls} set={set} />
-            <AreaInput label="계약면적" pyKey="contractPy"  ls={ls} set={set} />
-          </div>
-
-          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>임대 조건 (만원)</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-            {fld('보증금',    'deposit',  '예) 50000')}
-            {fld('임대료/월', 'rent',     '예) 1200')}
-            {fld('관리비/월', 'mgmtFee',  '예) 200')}
-          </div>
-
-          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>일정</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-            {fld('입주일정',   'moveIn',     '예) 2026-08-01 또는 즉시 입주')}
-            {fld('사용승인일', 'useAprDate', '예) 2010-03-15')}
-          </div>
-
-          <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>
-            추가 항목 <span style={{fontWeight:400,color:'#aaa',fontSize:'10px'}}>(입력 시에만 리포트에 출력)</span>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
-            {fld('렌트프리', 'rentFree', '예) 3개월')}
-            {fld('핏아웃',   'fitOut',   '예) 3개월 + 50만원/평 지원')}
-          </div>
-
-          <div style={{marginBottom:'16px'}}>
-            <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>비고</div>
-            <textarea value={ls.notes||''} rows={3} onChange={e=>set('notes',e.target.value)}
-              placeholder="층별 특이사항, 인테리어 상태, 임대인 조건 등"
-              style={{width:'100%',resize:'vertical',fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
-          </div>
-
-          <div style={{marginBottom:'20px'}}>
-            <div style={{fontSize:'10px',color:'#888',marginBottom:'6px'}}>건물 사진 (1장)</div>
-            <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
-              {ls.photo ? (
-                <div style={{position:'relative',flexShrink:0}}>
-                  <img src={ls.photo} style={{width:'120px',height:'80px',objectFit:'cover',border:'1px solid #e0dcd4',display:'block'}} />
-                  <button onClick={()=>set('photo',null)}
-                    style={{position:'absolute',top:'2px',right:'2px',background:'rgba(0,0,0,0.6)',color:'white',border:'none',cursor:'pointer',fontSize:'11px',padding:'1px 5px'}}>×</button>
-                </div>
-              ) : (
-                <label style={{width:'120px',height:'80px',border:'2px dashed #e0dcd4',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',background:'#fafaf8',flexShrink:0}}>
-                  <span style={{fontSize:'10px',color:'#aaa'}}>📷 업로드</span>
-                  <input type="file" accept="image/*" style={{display:'none'}} onChange={handlePhoto} />
-                </label>
-              )}
-            </div>
-          </div>
-
-          <div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}>
-            <button onClick={onClose}
-              style={{padding:'7px 16px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>취소</button>
-            <button onClick={handleSave} disabled={busy}
-              style={{padding:'7px 20px',background:busy?'#888':'#c9a84c',color:'white',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit'}}>
-              {busy ? '저장 중…' : '저장'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+  const fld = (label, key, ph='', type='text', full=false) => (
+    <div style={{gridColumn:full?'1 / -1':'auto'}}>
+      <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>{label}</div>
+      <input type={type} value={ls[key]||''} placeholder={ph}
+        onChange={e=>set(key,e.target.value)}
+        style={{width:'100%',fontSize:'12px',padding:'5px 8px',border:'1px solid #e0dcd4'}} />
+    </div>
   );
-}
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.3.3 레이아웃 개선) ──
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function LCard({ ls, onEdit, onDelete, onToggle }) {
-  const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
-    ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
-  const totMon = n(ls.rent)+n(ls.mgmtFee);
+  const handlePhoto = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => set('photo', ev.target.result);
+    r.readAsDataURL(f);
+  };
+
+  const handleSave = async () => {
+    if (!ls.buildingName.trim()) { alert('건물명을 입력하세요'); return; }
+    setBusy(true);
+    try {
+      await dbUpsert(ls);
+      onSave(ls);
+    } catch(e) {
+      alert('저장 실패: '+e.message);
+    } finally { setBusy(false); }
+  };
 
   return (
-    <div className="pci" style={{background:'white',border:'1px solid #e0dcd4',position:'relative',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-      <div style={{position:'absolute',left:0,top:0,bottom:0,width:'3px',background:ls.printSel?'#c9a84c':'#e0dcd4'}} />
-
-      <div style={{padding:'14px 14px 10px 16px',flex:1}}>
-
-        {/* ── 헤더 ── */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'18px',fontWeight:700,color:'#0d1b2a',lineHeight:1.2,marginBottom:'3px'}}>
-              {ls.buildingName||'(건물명 없음)'}
-            </div>
-            {ls.floor && (
-              <div style={{fontSize:'13px',color:'#c9a84c',fontWeight:700,marginBottom:'2px'}}>
-                {ls.floor}층{ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : ''}
-              </div>
-            )}
-            {ls.address && <div style={{fontSize:'11px',color:'#888',lineHeight:1.4}}>{ls.address}</div>}
+    <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px'}}>
+      <div style={{background:'white',width:'100%',maxWidth:'680px',maxHeight:'90vh',overflowY:'auto',padding:'24px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px',borderBottom:'2px solid #0d1b2a',paddingBottom:'10px'}}>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a'}}>
+            {init ? '매물 수정' : '새 매물 등록'}
           </div>
-          <input type="checkbox" checked={ls.printSel} onChange={onToggle}
-            title="출력 선택" style={{cursor:'pointer',marginLeft:'8px',flexShrink:0,width:'16px',height:'16px'}} />
+          <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'18px',color:'#888'}}>×</button>
         </div>
 
-        {/* ── 사진 ── */}
-        {ls.photo && (
-          <img src={ls.photo} style={{width:'100%',height:'120px',objectFit:'cover',display:'block',marginBottom:'10px',borderRadius:'1px'}} />
-        )}
-
-        {/* ── 면적 ── */}
-        {(ls.exclusivePy||ls.contractPy) && (
-          <div style={{display:'flex',gap:'0',marginBottom:'10px',background:'#f7f4ef',borderRadius:'2px'}}>
-            {ls.exclusivePy && (
-              <div style={{flex:1,padding:'8px 10px',borderRight:ls.contractPy?'1px solid #ede9e1':'none'}}>
-                <div style={{fontSize:'10px',color:'#aaa',marginBottom:'2px',letterSpacing:'.05em'}}>전 용</div>
-                <div style={{fontSize:'17px',fontWeight:700,color:'#0d1b2a',lineHeight:1}}>
-                  {ls.exclusivePy}<span style={{fontSize:'11px',fontWeight:400,color:'#888',marginLeft:'2px'}}>평</span>
-                </div>
-                <div style={{fontSize:'11px',color:'#aaa',marginTop:'2px'}}>{py2m(ls.exclusivePy)} ㎡</div>
-              </div>
-            )}
-            {ls.contractPy && (
-              <div style={{flex:1,padding:'8px 10px'}}>
-                <div style={{fontSize:'10px',color:'#aaa',marginBottom:'2px',letterSpacing:'.05em'}}>계 약</div>
-                <div style={{fontSize:'17px',fontWeight:700,color:'#0d1b2a',lineHeight:1}}>
-                  {ls.contractPy}<span style={{fontSize:'11px',fontWeight:400,color:'#888',marginLeft:'2px'}}>평</span>
-                </div>
-                <div style={{fontSize:'11px',color:'#aaa',marginTop:'2px'}}>{py2m(ls.contractPy)} ㎡</div>
-              </div>
-            )}
+        {/* 네이버 자동 입력 버튼 */}
+        {showNaver && <NaverParseModal onParsed={handleParsed} onClose={()=>setShowNaver(false)} />}
+        <div style={{marginBottom:'18px',padding:'12px 14px',background:'#f0f6ff',border:'1px solid #b8d0f5',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
+          <div>
+            <div style={{fontSize:'12px',fontWeight:600,color:'#1a3a6e',marginBottom:'2px'}}>📋 네이버 매물 텍스트로 자동 입력</div>
+            <div style={{fontSize:'11px',color:'#5a7aaa'}}>네이버 텍스트 붙여넣기 → AI가 자동으로 채워드립니다</div>
           </div>
-        )}
-
-        {/* ── 임대 조건 ── */}
-        <div style={{marginBottom:'8px'}}>
-          {ls.deposit && (
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 0',borderBottom:'1px solid #f5f2eb'}}>
-              <span style={{fontSize:'12px',color:'#888'}}>보증금</span>
-              <span style={{fontSize:'13px',fontWeight:600,color:'#0d1b2a'}}>{fmt(ls.deposit)}</span>
-            </div>
-          )}
-          {ls.rent && (
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 0',borderBottom:'1px solid #f5f2eb'}}>
-              <span style={{fontSize:'12px',color:'#888'}}>임대료/월</span>
-              <span style={{fontSize:'13px',fontWeight:600,color:'#0d1b2a'}}>{fmt(ls.rent)}</span>
-            </div>
-          )}
-          {ls.mgmtFee && (
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 0',borderBottom:'1px solid #f5f2eb'}}>
-              <span style={{fontSize:'12px',color:'#888'}}>관리비/월</span>
-              <span style={{fontSize:'12px',fontWeight:500,color:'#555'}}>{fmt(ls.mgmtFee)}</span>
-            </div>
-          )}
-          {totMon > 0 && (
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0 2px'}}>
-              <span style={{fontSize:'13px',fontWeight:700,color:'#0d1b2a'}}>월 합계</span>
-              <span style={{fontSize:'15px',fontWeight:700,color:'#0d1b2a'}}>{fmt(totMon)}</span>
-            </div>
-          )}
+          <button onClick={()=>setShowNaver(true)}
+            style={{flexShrink:0,padding:'7px 16px',background:'#1a3a6e',color:'white',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:'inherit',fontWeight:600}}>
+            ✨ 자동 입력
+          </button>
+        </div>
+        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>기본 정보</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+          {fld('건물명 *',               'buildingName', '예) 반포 파인빌딩')}
+          {fld('별칭 (카드·비교표용)',    'alias',        '예) 반포파인 301호')}
+          {fld('주소',                   'address',      '서울특별시 서초구...', 'text', true)}
+          {fld('층',                     'floor',        '예) 3')}
+          {fld('총층',                   'totalFloor',   '예) 6')}
+          {fld('전용면적 (평)',           'exclusivePy',  '예) 35.5')}
+          {fld('계약면적 (평)',           'contractPy',   '예) 42.0')}
+          {fld('주차',                   'parking',      '예) 전용 2대')}
+          {fld('승강기',                 'elevator',     '예) 2대')}
         </div>
 
-        {/* ── NOC ── */}
-        {noc && (
-          <div style={{background:'#fff3dc',padding:'5px 10px',marginBottom:'8px',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'2px'}}>
-            <span style={{fontSize:'11px',color:'#a05800'}}>NOC / 전용평</span>
-            <span style={{fontWeight:700,color:'#a05800',fontSize:'13px'}}>{noc.toLocaleString()}만원</span>
-          </div>
-        )}
+        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>임대 조건 (만원)</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+          {fld('보증금',    'deposit',  '예) 50000')}
+          {fld('임대료/월', 'rent',     '예) 1200')}
+          {fld('관리비/월', 'mgmtFee',  '예) 200')}
+        </div>
 
-        {/* ── 기타 정보 ── */}
-        {(ls.parking||ls.elevator||ls.moveIn||ls.useAprDate||ls.rentFree||ls.fitOut) && (
-          <div style={{fontSize:'11px',lineHeight:1.9,borderTop:'1px solid #f0ede6',paddingTop:'8px'}}>
-            {ls.parking    && <div><span style={{color:'#aaa'}}>주차</span> <span style={{color:'#444'}}>{ls.parking}</span></div>}
-            {ls.elevator   && <div><span style={{color:'#aaa'}}>승강기</span> <span style={{color:'#444'}}>{ls.elevator}</span></div>}
-            {ls.moveIn     && <div><span style={{color:'#aaa'}}>입주</span> <span style={{color:'#444'}}>{ls.moveIn}</span></div>}
-            {ls.useAprDate && <div><span style={{color:'#aaa'}}>사용승인</span> <span style={{color:'#444'}}>{ls.useAprDate}</span></div>}
-            {ls.rentFree   && <div><span style={{color:'#aaa'}}>렌트프리</span> <span style={{color:'#2471a3',fontWeight:600}}>{ls.rentFree}</span></div>}
-            {ls.fitOut     && <div><span style={{color:'#aaa'}}>핏아웃</span> <span style={{color:'#2471a3',fontWeight:600}}>{ls.fitOut}</span></div>}
-          </div>
-        )}
-      </div>
+        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>일정</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+          {fld('입주일정',   'moveIn',      '예) 2026-08-01 또는 즉시 입주')}
+          {fld('사용승인일', 'useAprDate',  '예) 2010-03-15')}
+        </div>
 
-      <div style={{borderTop:'1px solid #f0ede6',padding:'7px 14px',display:'flex',gap:'6px',justifyContent:'flex-end',background:'#fafaf8'}}>
-        <button onClick={onEdit}
-          style={{fontSize:'11px',padding:'4px 12px',background:'none',border:'1px solid #c9a84c',color:'#c9a84c',cursor:'pointer'}}>편집</button>
-        <button onClick={onDelete}
-          style={{fontSize:'11px',padding:'4px 12px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>삭제</button>
+        <div style={{fontSize:'11px',fontWeight:600,color:'#c9a84c',letterSpacing:'.1em',marginBottom:'8px'}}>
+          추가 항목 <span style={{fontWeight:400,color:'#aaa',fontSize:'10px'}}>(입력 시에만 리포트에 출력)</span>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
+          {fld('렌트프리', 'rentFree', '예) 3개월')}
+          {fld('핏아웃',   'fitOut',   '예) 3개월 + 50만원/평 지원')}
+        </div>
+
+        <div style={{marginBottom:'16px'}}>
+          <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>비고</div>
+          <textarea value={ls.notes||''} rows={3} onChange={e=>set('notes',e.target.value)}
+            placeholder="층별 특이사항, 인테리어 상태, 임대인 조건 등"
+            style={{width:'100%',resize:'vertical',fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
+        </div>
+
+        <div style={{marginBottom:'20px'}}>
+          <div style={{fontSize:'10px',color:'#888',marginBottom:'6px'}}>건물 사진 (1장)</div>
+          <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
+            {ls.photo ? (
+              <div style={{position:'relative',flexShrink:0}}>
+                <img src={ls.photo} style={{width:'120px',height:'80px',objectFit:'cover',border:'1px solid #e0dcd4',display:'block'}} />
+                <button onClick={()=>set('photo',null)}
+                  style={{position:'absolute',top:'2px',right:'2px',background:'rgba(0,0,0,0.6)',color:'white',border:'none',cursor:'pointer',fontSize:'11px',padding:'1px 5px'}}>×</button>
+              </div>
+            ) : (
+              <label style={{width:'120px',height:'80px',border:'2px dashed #e0dcd4',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',background:'#fafaf8',flexShrink:0}}>
+                <span style={{fontSize:'10px',color:'#aaa'}}>📷 업로드</span>
+                <input type="file" accept="image/*" style={{display:'none'}} onChange={handlePhoto} />
+              </label>
+            )}
+          </div>
+        </div>
+
+        <div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}>
+          <button onClick={onClose}
+            style={{padding:'7px 16px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>취소</button>
+          <button onClick={handleSave} disabled={busy}
+            style={{padding:'7px 20px',background:busy?'#888':'#c9a84c',color:'white',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'12px',fontFamily:'inherit'}}>
+            {busy ? '저장 중…' : '저장'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.3 (B안 미니멀 + 세부 조정) ──
+// ── 매물 카드 ──
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function LCard({ ls, onEdit, onDelete, onToggle }) {
+  const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
+    ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
+
+  return (
+    <div className="pci" style={{background:'white',border:'1px solid #e0dcd4',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',left:0,top:0,bottom:0,width:'3px',background:ls.printSel?'#c9a84c':'#e0dcd4'}} />
+      <div style={{padding:'12px 12px 8px 15px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'16px',fontWeight:600,color:'#0d1b2a',lineHeight:1.2,marginBottom:'2px'}}>
+              {ls.buildingName||'(건물명 없음)'}
+            </div>
+            {ls.floor && <div style={{fontSize:'11px',color:'#c9a84c',fontWeight:600}}>{ls.floor}층{ls.totalFloor?' / 총 '+ls.totalFloor+'층':''}</div>}
+            {ls.address && <div style={{fontSize:'10px',color:'#888',marginTop:'2px',lineHeight:1.3}}>{ls.address}</div>}
+          </div>
+          <input type="checkbox" checked={ls.printSel} onChange={onToggle}
+            title="출력 선택" style={{cursor:'pointer',marginLeft:'8px',flexShrink:0}} />
+        </div>
+
+        {ls.photo && <img src={ls.photo} style={{width:'100%',height:'100px',objectFit:'cover',display:'block',marginBottom:'8px'}} />}
+
+        {(ls.exclusivePy||ls.contractPy) && (
+          <div style={{display:'flex',gap:'12px',marginBottom:'8px',background:'#f7f4ef',padding:'6px 8px'}}>
+            {ls.exclusivePy && <div>
+              <div style={{fontSize:'9px',color:'#aaa'}}>전용</div>
+              <div style={{fontSize:'14px',fontWeight:600,color:'#0d1b2a',lineHeight:1}}>
+                {ls.exclusivePy}<span style={{fontSize:'10px',fontWeight:400}}>평</span>
+              </div>
+              <div style={{fontSize:'9px',color:'#aaa'}}>{py2m(ls.exclusivePy)}㎡</div>
+            </div>}
+            {ls.contractPy && <div>
+              <div style={{fontSize:'9px',color:'#aaa'}}>계약</div>
+              <div style={{fontSize:'14px',fontWeight:600,color:'#0d1b2a',lineHeight:1}}>
+                {ls.contractPy}<span style={{fontSize:'10px',fontWeight:400}}>평</span>
+              </div>
+              <div style={{fontSize:'9px',color:'#aaa'}}>{py2m(ls.contractPy)}㎡</div>
+            </div>}
+          </div>
+        )}
+
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'11px',marginBottom:'6px'}}>
+          <tbody>
+            {ls.deposit && <tr>
+              <td style={{padding:'2px 0',color:'#888',width:'56px'}}>보증금</td>
+              <td style={{fontWeight:600,color:'#0d1b2a',textAlign:'right'}}>{fmt(ls.deposit)}</td>
+            </tr>}
+            {ls.rent && <tr>
+              <td style={{padding:'2px 0',color:'#888'}}>임대료/월</td>
+              <td style={{fontWeight:600,color:'#0d1b2a',textAlign:'right'}}>{fmt(ls.rent)}</td>
+            </tr>}
+            {ls.mgmtFee && <tr>
+              <td style={{padding:'2px 0',color:'#888'}}>관리비/월</td>
+              <td style={{fontWeight:600,color:'#555',textAlign:'right'}}>{fmt(ls.mgmtFee)}</td>
+            </tr>}
+            {(n(ls.rent)||n(ls.mgmtFee)) > 0 && <tr style={{borderTop:'1px solid #f0ede6'}}>
+              <td style={{padding:'3px 0 2px',color:'#0d1b2a',fontWeight:700}}>월 합계</td>
+              <td style={{fontWeight:700,color:'#0d1b2a',textAlign:'right'}}>{fmt(n(ls.rent)+n(ls.mgmtFee))}</td>
+            </tr>}
+          </tbody>
+        </table>
+
+        {noc && (
+          <div style={{background:'#fff3dc',padding:'4px 8px',marginBottom:'6px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:'10px',color:'#a05800'}}>NOC /전용평</span>
+            <span style={{fontWeight:700,color:'#a05800',fontSize:'12px'}}>{noc.toLocaleString()}만원</span>
+          </div>
+        )}
+
+        <div style={{fontSize:'10px',color:'#888',lineHeight:1.7}}>
+          {ls.parking  && <div>주차: {ls.parking}</div>}
+          {ls.elevator && <div>승강기: {ls.elevator}</div>}
+          {ls.moveIn   && <div>입주: {ls.moveIn}</div>}
+          {ls.rentFree && <div style={{color:'#2471a3'}}>렌트프리: {ls.rentFree}</div>}
+          {ls.fitOut   && <div style={{color:'#2471a3'}}>핏아웃: {ls.fitOut}</div>}
+        </div>
+      </div>
+
+      <div style={{borderTop:'1px solid #f0ede6',padding:'6px 12px',display:'flex',gap:'6px',justifyContent:'flex-end',background:'#fafaf8'}}>
+        <button onClick={onEdit}
+          style={{fontSize:'10px',padding:'3px 10px',background:'none',border:'1px solid #c9a84c',color:'#c9a84c',cursor:'pointer'}}>편집</button>
+        <button onClick={onDelete}
+          style={{fontSize:'10px',padding:'3px 10px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>삭제</button>
+      </div>
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 비교표 v1.3.4 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -573,22 +470,18 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   const chunks = [];
   for (let i=0; i<sel.length; i+=CHUNK) chunks.push(sel.slice(i,i+CHUNK));
 
-  // ── v1.3.3 스타일 ──
   const labelColW = '78pt';
   const dataColW  = '118pt';
-  const BD    = '0.5pt solid #e8e4dc';          // 일반 셀 보더
-  const BD_HD = '2.5pt solid #c9a84c';          // 컬럼 헤더 골드 밑줄
-  const BD_SEC_TOP = '1pt solid #ccc8c0';       // 섹션 상단 — 회색(산만하지 않게)
+  const BD        = '0.5pt solid #e8e4dc';
+  const BD_HD     = '2.5pt solid #c9a84c';
+  const BD_SEC    = '1pt solid #ccc8c0';
 
-  // 컬럼 헤더
   const thS = {
     background:'white', padding:'9pt 8pt 7pt',
     borderLeft:'none', borderRight:'none', borderTop:'none', borderBottom:BD_HD,
     verticalAlign:'bottom', textAlign:'center',
   };
   const thEmptyS = {background:'white', borderBottom:BD_HD, border:'none', padding:'0'};
-
-  // 라벨 셀
   const plS = {
     background:'#fafaf8', padding:'4.5pt 6pt', color:'#555', fontWeight:600,
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
@@ -601,41 +494,33 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
     fontSize:'8pt', textAlign:'center', letterSpacing:'.05em',
     whiteSpace:'nowrap', verticalAlign:'middle',
   };
-
-  // 주소 행
   const addrLabelS = {
     background:'#f0ece2', padding:'4pt 6pt', color:'#6b4f2a', fontWeight:700,
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
-    fontSize:'7pt', textAlign:'center', letterSpacing:'.1em', verticalAlign:'middle',
+    fontSize:'8.5pt', textAlign:'center', letterSpacing:'.1em', verticalAlign:'middle',
   };
   const addrDataS = {
     background:'#f5f0e8', padding:'4pt 8pt', color:'#5a4a2a',
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
     fontSize:'8.5pt', textAlign:'center', lineHeight:1.5, verticalAlign:'middle',
   };
-
-  // 섹션 행 — 좌우 보더 없음, 상단 회색선만
   const secLblS = {
     background:'white', padding:'5pt 6pt', color:'#888', fontWeight:700,
-    borderTop:BD_SEC_TOP, borderBottom:'none', borderLeft:'none', borderRight:'none',
+    borderTop:BD_SEC, borderBottom:'none', borderLeft:'none', borderRight:'none',
     fontSize:'6.5pt', textAlign:'left', letterSpacing:'.2em', verticalAlign:'middle',
   };
   const secCellS = {
     background:'white',
-    borderTop:BD_SEC_TOP, borderBottom:'none', borderLeft:'none', borderRight:'none',
+    borderTop:BD_SEC, borderBottom:'none', borderLeft:'none', borderRight:'none',
     padding:'0',
   };
-
-  // 데이터 셀 (좌우 보더 제거, 상하만)
   const tdS = (s, hi) => ({
     padding: hi?'5pt 10pt':'4.5pt 10pt',
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
-    fontSize: hi?'9.5pt':'8.5pt',
-    fontWeight: hi?700:500,
+    fontSize: hi?'9.5pt':'8.5pt', fontWeight: hi?700:500,
     textAlign:'center', verticalAlign:'middle',
     background: hi?'#fff8f0':(s?'#fafaf8':'white'),
-    color: hi?'#7a3800':'#0d1b2a',
-    letterSpacing:'.01em',
+    color: hi?'#7a3800':'#0d1b2a', letterSpacing:'.01em',
   });
 
   return (
@@ -656,29 +541,28 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </div>
           </div>
 
-          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
+          {/* 표 — width:100%로 항상 페이지 폭 채움 */}
+          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:'100%'}}>
             <colgroup>
               <col style={{width:labelColW}} />
               {chunk.map(l=><col key={l.id} style={{width:dataColW}} />)}
             </colgroup>
             <thead>
-              {/* 건물명 행 — 흰 배경, 골드 하단 밑줄 */}
               <tr>
                 <th style={thEmptyS}></th>
                 {chunk.map(l=>(
                   <th key={l.id} style={thS}>
-                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'12pt',fontWeight:700,color:'#0d1b2a',lineHeight:1.2,marginBottom:'4pt'}}>
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'12pt',fontWeight:700,color:'#0d1b2a',lineHeight:1.2,marginBottom:'3pt'}}>
                       {l.buildingName||'(이름없음)'}
                     </div>
                     {l.floor && (
-                      <div style={{fontSize:'7.5pt',color:'#b07c20',fontWeight:600,marginTop:'3pt',letterSpacing:'.06em'}}>
+                      <div style={{fontSize:'7.5pt',color:'#b07c20',fontWeight:600,letterSpacing:'.06em'}}>
                         {l.floor}층
                       </div>
                     )}
                   </th>
                 ))}
               </tr>
-              {/* 주소 행 — A안 베이지 색상 */}
               {chunk.some(l=>l.address) && (
                 <tr>
                   <td style={addrLabelS}>주소</td>
@@ -699,7 +583,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                     <React.Fragment key={col.l}>
                       {col.sec && (
                         <tr>
-                          <td style={secLblS}>{col.sec.replace(/^[^\s]+\s/,'')}</td>
+                          <td style={secLblS}>{col.sec}</td>
                           {chunk.map(function(l){ return <td key={l.id} style={secCellS}></td>; })}
                         </tr>
                       )}
@@ -714,7 +598,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </tbody>
           </table>
 
-          {/* 하단 정보 */}
+          {/* 푸터 */}
           <div style={{marginTop:'10pt',borderTop:'1pt solid #c9a84c',paddingTop:'6pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
               {logoSrc && <img src={logoSrc} style={{height:'22pt',objectFit:'contain'}} />}
@@ -722,14 +606,14 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
             </span>
             <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
-              {agentName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
+              {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
               {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
             </span>
           </div>
         </div>
       ))}
 
-      {/* ── 화면 미리보기 — B안 동일 스타일 ── */}
+      {/* 화면 미리보기 */}
       <div className="screen-only" style={{overflowX:'auto'}}>
         <table style={{borderCollapse:'collapse',minWidth:'500px',fontSize:'12px',borderTop:'2px solid #c9a84c'}}>
           <thead>
@@ -738,13 +622,13 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               {sel.map(l=>(
                 <th key={l.id} style={{background:'white',padding:'10px 14px',textAlign:'center',borderBottom:'3px solid #c9a84c',minWidth:'150px',borderRight:'0.5px solid #e8e4dc'}}>
                   <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'16px',fontWeight:700,color:'#0d1b2a',marginBottom:'4px'}}>{l.buildingName}</div>
-                  {l.floor && <div style={{fontSize:'11px',color:'#b07c20',fontWeight:600,marginTop:'3px',letterSpacing:'.06em'}}>{l.floor}층</div>}
+                  {l.floor && <div style={{fontSize:'11px',color:'#b07c20',fontWeight:600,marginTop:'2px'}}>{l.floor}층</div>}
                 </th>
               ))}
             </tr>
             {sel.some(l=>l.address) && (
               <tr>
-                <td style={{background:'#f0ece2',padding:'5px 12px',textAlign:'center',fontSize:'11px',color:'#6b4f2a',fontWeight:700,letterSpacing:'.1em',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #e0dcd4'}}>주소</td>
+                <td style={{background:'#f0ece2',padding:'5px 12px',textAlign:'center',fontSize:'12px',color:'#6b4f2a',fontWeight:700,letterSpacing:'.1em',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #e0dcd4'}}>주소</td>
                 {sel.map(l=>(
                   <td key={l.id} style={{background:'#f5f0e8',padding:'5px 12px',textAlign:'center',fontSize:'13px',color:'#5a4a2a',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #e0dcd4'}}>{shortAddr(l.address)}</td>
                 ))}
@@ -763,7 +647,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                     {col.sec && (
                       <tr>
                         <td colSpan={sel.length+1} style={{background:'white',borderTop:'1px solid #ccc8c0',borderBottom:'none',padding:'6px 12px',fontSize:'10px',fontWeight:700,color:'#999',letterSpacing:'.2em',textAlign:'left'}}>
-                          {col.sec.replace(/^[^\s]+\s/,'')}
+                          {col.sec}
                         </td>
                       </tr>
                     )}
@@ -786,7 +670,6 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   );
 }
 
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 리포트 카드 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -798,10 +681,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
   const hd = label => (
     <div style={{fontSize:'11px',fontWeight:600,color:'#0d1b2a',marginBottom:'6px',letterSpacing:'.05em',borderBottom:'1px solid #e0dcd4',paddingBottom:'4px'}}>{label}</div>
   );
-  const row = (label, value, hi) => value ? (
+  const row = (label, value, hi=false) => value ? (
     <tr>
-      <td style={{padding:'3px 6px',background:hi?'#fff3dc':'#f5f2eb',color:hi?'#a05800':'#666',fontWeight:hi?700:500,width:'110px',borderBottom:'1px solid #eee',fontSize:'10px',whiteSpace:'nowrap'}}>{label}</td>
-      <td style={{padding:'3px 8px',borderBottom:'1px solid #eee',color:'#1a1a2e',fontSize:hi?'14px':'12px',fontWeight:hi?700:400}}>{value}</td>
+      <td style={{padding:'4px 8px',background:hi?'#fff3dc':'#f5f2eb',color:hi?'#a05800':'#555',fontWeight:hi?700:500,width:'100px',minWidth:'90px',borderBottom:'1px solid #eee',fontSize:'11px',letterSpacing:'.02em'}}>{label}</td>
+      <td style={{padding:'4px 10px',borderBottom:'1px solid #eee',color:'#0d1b2a',fontSize:hi?'14px':'12px',fontWeight:hi?700:400}}>{value}</td>
     </tr>
   ) : null;
 
@@ -813,8 +696,13 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
             <div style={{fontSize:'8px',letterSpacing:'.25em',color:'#c9a84c',marginBottom:'4px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
             {reportTitle && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'30px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'4px'}}>{reportTitle}</div>}
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'18px',fontWeight:500,color:'#333',lineHeight:1.2}}>
-              {ls.buildingName}{ls.floor ? ' '+floorLabel(ls) : ''}
+              {ls.buildingName}
             </div>
+            {ls.floor && (
+              <div style={{fontSize:'13px',color:'#c9a84c',fontWeight:600,marginTop:'5px',letterSpacing:'.06em',fontFamily:"'Noto Sans KR',sans-serif"}}>
+                {floorLabel(ls)}
+              </div>
+            )}
             {ls.address && <div style={{fontSize:'10px',color:'#888',marginTop:'4px'}}>{ls.address}</div>}
           </div>
           <div style={{textAlign:'right',fontSize:'11px',color:'#555',fontWeight:500,flexShrink:0,marginLeft:'12px'}}>{reportDate}</div>
@@ -850,7 +738,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
               <tbody>
                 {row('전용면적', ls.exclusivePy ? ls.exclusivePy+'평 ('+(py2m(ls.exclusivePy)||'—')+'㎡)' : null)}
                 {row('계약면적', ls.contractPy  ? ls.contractPy+'평 ('+(py2m(ls.contractPy)||'—')+'㎡)' : null)}
-                {row('층',       ls.floor ? floorLabel(ls) : null)}
+                {row('층',       ls.floor ? ls.floor+'층' : null)}
                 {row('주차',     ls.parking    || null)}
                 {row('승강기',   ls.elevator   || null)}
                 {row('입주일정', ls.moveIn     || null)}
@@ -943,26 +831,26 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 function InfoPanel({ info, setInfo, onDisconnect }) {
   const [open, setOpen] = useState(false);
   const f = (k,v) => setInfo(p=>({...p,[k]:v}));
-  const inp = (label, key, ph, type) => (
+  const inp = (label, key, ph) => (
     <div>
       <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>{label}</div>
-      <input value={info[key]||''} placeholder={ph} type={type||'text'} onChange={e=>f(key,e.target.value)}
-        style={{width:'100%',fontSize:'11px',padding:'5px 7px',border:'1px solid #e0dcd4'}} />
+      <input value={info[key]||''} placeholder={ph} onChange={e=>f(key,e.target.value)}
+        style={{width:'100%',fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
     </div>
   );
   return (
     <div style={{borderTop:'1px solid #e0dcd4',marginTop:'8px',paddingTop:'8px'}}>
       <div onClick={()=>setOpen(!open)}
-        style={{cursor:'pointer',fontSize:'11px',color:'#888',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span>{open?'▲':'▼'} 출력 정보 설정 (상호·담당자·로고)</span>
+        style={{cursor:'pointer',fontSize:'12px',color:'#888',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span>{open?'▲':'▼'} 출력 정보 설정 (상호 · 담당자 · 로고)</span>
         <button onClick={e=>{e.stopPropagation();if(confirm('Supabase 연결을 해제하시겠습니까?'))onDisconnect();}}
           style={{fontSize:'10px',padding:'2px 8px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>연결 해제</button>
       </div>
       {open && (
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginTop:'10px'}}>
-          {inp('상호',   'bizName',    '타임즈부동산중개')}
-          {inp('주소',   'bizAddr',    '서울특별시 서초구 반포동 반포프라자')}
-          {inp('담당자', 'agentName',  '성재윤')}
+          {inp('상호', 'bizName', '타임즈부동산중개')}
+          {inp('주소', 'bizAddr', '서울특별시 서초구 반포동 반포프라자')}
+          {inp('담당자', 'agentName', '성재윤')}
           {inp('연락처', 'agentPhone', '010-6655-5445')}
           <div style={{gridColumn:'1/-1'}}>
             <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>로고 이미지</div>
@@ -992,7 +880,7 @@ function App() {
   const [showForm,  setShowForm]  = useState(false);
   const [editing,   setEditing]   = useState(null);
   const [loading,   setLoading]   = useState(false);
-  const [dbReady,   setDbReady]   = useState(false);
+  const [dbReady,   setDbReady]   = useState(false);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
     agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
@@ -1001,6 +889,7 @@ function App() {
   const [reportTitle, setRT] = useState('');
   const reportDate = new Date().toISOString().slice(0,10);
 
+  // ── 초기 연결 시도 ──
   useEffect(() => {
     const cred = localStorage.getItem(STO_CRED);
     if (cred) {
@@ -1008,7 +897,7 @@ function App() {
         const { url, key } = JSON.parse(cred);
         initSB(url, key);
         loadData();
-      } catch(e) {}
+      } catch {}
     }
   }, []);
 
@@ -1025,7 +914,8 @@ function App() {
     } finally { setLoading(false); }
   };
 
-  const handleConnect    = () => { loadData(); };
+  const handleConnect = () => { loadData(); };
+
   const handleDisconnect = () => {
     localStorage.removeItem(STO_CRED);
     _sb = null;
@@ -1033,6 +923,7 @@ function App() {
     setListings([]);
   };
 
+  // 저장
   const onSave = ls => {
     setListings(p => {
       const idx = p.findIndex(x=>x.id===ls.id);
@@ -1041,6 +932,7 @@ function App() {
     setShowForm(false); setEditing(null);
   };
 
+  // 삭제
   const onDelete = async (id, name) => {
     if (!confirm(name+' 매물을 삭제하시겠습니까?')) return;
     try {
@@ -1049,6 +941,7 @@ function App() {
     } catch(e) { alert('삭제 실패: '+e.message); }
   };
 
+  // 출력 선택 토글
   const onToggle = async (id) => {
     const updated = listings.map(x=>x.id===id?{...x,printSel:!x.printSel}:x);
     setListings(updated);
@@ -1058,6 +951,7 @@ function App() {
 
   const selCount = listings.filter(l=>l.printSel).length;
 
+  // Supabase 미연결
   if (!dbReady && !loading) {
     const cred = localStorage.getItem(STO_CRED);
     if (!cred) return <SBSetup onConnect={handleConnect} />;
@@ -1065,7 +959,7 @@ function App() {
 
   const printCSS = view==='report'
     ? '@media print { @page { size:A4 portrait !important; margin:10mm 12mm 18mm; } .report-card { page-break-after:always; break-after:page; } }'
-    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 14mm; } .print-only { display:block !important; } }';
+    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 16mm; @bottom-left { content:"'+(info.bizName||'')+(info.bizAddr?'  |  '+info.bizAddr:'')+'"; font-size:7.5pt; color:#555; font-family:sans-serif; } @bottom-right { content:"'+(info.agentName||'')+(info.agentPhone?'   '+info.agentPhone:'')+'"; font-size:7.5pt; color:#555; font-family:sans-serif; } } .print-only { display:block !important; } }';
 
   const TABS = [
     {id:'list',    label:'📋 매물 목록'},
@@ -1076,20 +970,14 @@ function App() {
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: printCSS}} />
-      {showForm && (
-        <ListingForm init={editing} onSave={onSave} onClose={()=>{setShowForm(false);setEditing(null);}} />
-      )}
+      {showForm && <ListingForm init={editing} onSave={onSave} onClose={()=>{setShowForm(false);setEditing(null);}} />}
 
       <header className="no-print" style={{background:'#0d1b2a',padding:'12px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div>
           <div style={{fontSize:'10px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'2px'}}>TIMES REAL ESTATE</div>
           <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22px',color:'white',fontWeight:500,lineHeight:1}}>
-              임대 매물 관리
-            </div>
-            <span style={{fontSize:'12px',color:'#0d1b2a',background:'#c9a84c',padding:'2px 8px',fontWeight:700,letterSpacing:'.04em',borderRadius:'2px',fontFamily:'inherit'}}>
-              {APP_VERSION}
-            </span>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22px',color:'white',fontWeight:500,lineHeight:1}}>임대 매물 관리</div>
+            <span style={{fontSize:'12px',color:'#0d1b2a',background:'#c9a84c',padding:'2px 8px',fontWeight:700,letterSpacing:'.04em',borderRadius:'2px',fontFamily:'inherit'}}>{APP_VERSION}</span>
           </div>
         </div>
         <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
@@ -1150,7 +1038,7 @@ function App() {
                   style={{padding:'10px 24px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>+ 첫 매물 등록</button>
               </div>
             ) : (
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(290px,1fr))',gap:'16px'}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'16px'}}>
                 {listings.map(ls=>(
                   <LCard key={ls.id} ls={ls}
                     onEdit={()=>{setEditing(ls);setShowForm(true);}}
