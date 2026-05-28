@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.6 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.6';
+// ── TIMES 임대 매물 관리 v1.4.7 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.7';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -64,7 +64,7 @@ const fmtPy = (manwon, py) => {
 const uid   = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const blank = () => ({
   id:uid(), createdAt:Date.now(),
-  buildingName:'', alias:'', address:'', floor:'', totalFloor:'',
+  buildingName:'', alias:'', address:'', floor:'', totalFloor:'', sortOrder:0,
   exclusivePy:'', contractPy:'',
   deposit:'', rent:'', mgmtFee:'',
   parking:'', elevator:'', moveIn:'', useAprDate:'',
@@ -87,7 +87,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.6 ──
+// ── 비교표 컬럼 v1.4.7 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -394,12 +394,18 @@ function ListingForm({ init, onSave, onClose }) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 매물 카드 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function LCard({ ls, onEdit, onDelete, onToggle }) {
+function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop, isDragging }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
     ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
 
   return (
-    <div className="pci" style={{background:'white',border:'1px solid #e0dcd4',position:'relative',overflow:'hidden'}}>
+    <div className="pci"
+      draggable={true}
+      onDragStart={onDragStart}
+      onDragOver={e=>{e.preventDefault();onDragOver();}}
+      onDrop={onDrop}
+      style={{background:'white',border:'1px solid #e0dcd4',position:'relative',overflow:'hidden',
+        opacity:isDragging?0.4:1,cursor:'grab',transition:'opacity .15s'}}>
       <div style={{position:'absolute',left:0,top:0,bottom:0,width:'3px',background:ls.printSel?'#c9a84c':'#e0dcd4'}} />
       <div style={{padding:'12px 12px 8px 15px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
@@ -483,7 +489,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.6 ──
+// ── 비교표 v1.4.7 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -956,7 +962,8 @@ function App() {
   const [editing,   setEditing]   = useState(null);
   const [loading,   setLoading]   = useState(false);
   const [loadErr,   setLoadErr]   = useState('');
-  const [dbReady,   setDbReady]   = useState(false);  // Supabase 연결됨
+  const [dbReady,   setDbReady]   = useState(false);
+  const [dragId,    setDragId]    = useState(null);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
     agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
@@ -985,6 +992,12 @@ function App() {
     setLoadErr('');
     try {
       const data = await dbLoad();
+      // sortOrder 기준 정렬 (없으면 createdAt 기준)
+      data.sort(function(a,b){
+        var ao = (a.sortOrder !== undefined) ? a.sortOrder : (a.createdAt||0);
+        var bo = (b.sortOrder !== undefined) ? b.sortOrder : (b.createdAt||0);
+        return ao - bo;
+      });
       setListings(data);
       setDbReady(true);
       setLoading(false);
@@ -1005,6 +1018,31 @@ function App() {
     _sb = null;
     setDbReady(false);
     setListings([]);
+  };
+
+  // 드래그 앤 드롭 순서 변경
+  const handleDragStart = id => setDragId(id);
+  const handleDragOver  = id => {
+    if (!dragId || dragId === id) return;
+    setListings(prev => {
+      var arr = prev.slice();
+      var fi = arr.findIndex(x=>x.id===dragId);
+      var ti = arr.findIndex(x=>x.id===id);
+      if (fi<0||ti<0) return prev;
+      var moved = arr.splice(fi,1)[0];
+      arr.splice(ti,0,moved);
+      return arr;
+    });
+  };
+  const handleDrop = async () => {
+    setDragId(null);
+    // sortOrder 재할당 후 저장
+    setListings(prev => {
+      var updated = prev.map((ls,i) => ({...ls, sortOrder:i}));
+      // 백그라운드 저장
+      updated.forEach(ls => dbUpsert(ls).catch(e=>console.warn('순서저장 오류:',e)));
+      return updated;
+    });
   };
 
   // 저장
@@ -1137,12 +1175,17 @@ function App() {
                   style={{padding:'10px 24px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>+ 첫 매물 등록</button>
               </div>
             ) : (
+              <div style={{fontSize:'11px',color:'#bbb',marginBottom:'8px',textAlign:'right'}}>✦ 카드를 드래그해서 순서를 변경할 수 있습니다</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'16px'}}>
                 {listings.map(ls=>(
                   <LCard key={ls.id} ls={ls}
                     onEdit={()=>{setEditing(ls);setShowForm(true);}}
                     onDelete={()=>onDelete(ls.id, ls.buildingName)}
-                    onToggle={()=>onToggle(ls.id)} />
+                    onToggle={()=>onToggle(ls.id)}
+                    onDragStart={()=>handleDragStart(ls.id)}
+                    onDragOver={()=>handleDragOver(ls.id)}
+                    onDrop={handleDrop}
+                    isDragging={dragId===ls.id} />
                 ))}
               </div>
             )}
