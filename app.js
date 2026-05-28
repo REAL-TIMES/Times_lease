@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.3.4 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.4';
+// ── TIMES 임대 매물 관리 v1.3.6 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.6';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.3.4 ──
+// ── 비교표 컬럼 v1.3.6 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -84,7 +84,7 @@ const CMP_COLS = [
   { l:'임대료/월',             f:ls => fmt(ls.rent) },
   { l:'관리비/월',             f:ls => fmt(ls.mgmtFee) },
   { l:'월 합계',  hi:true,     f:ls => (n(ls.rent)||n(ls.mgmtFee)) ? fmt(n(ls.rent)+n(ls.mgmtFee)) : '—' },
-  { l:'NOC/전용평',            f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
+  { l:'NOC전용평', disp:<>NOC<span style={{fontSize:'5.5pt',opacity:.75,letterSpacing:'.01em'}}>(전용평)</span></>, f:ls => ls.exclusivePy&&(n(ls.rent)||n(ls.mgmtFee))
                                   ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)).toLocaleString()+'만원' : '—' },
   { l:'주차',     sec:'정  보', f:ls => ls.parking    || '—' },
   { l:'승강기',   always:true,  f:ls => ls.elevator   || '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.4 ──
+// ── 비교표 v1.3.6 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -514,9 +514,9 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
     borderTop:BD_SEC, borderBottom:'none', borderLeft:'none', borderRight:'none',
     padding:'0',
   };
-  const tdS = (s, hi) => ({
+  const tdS = (s, hi, isLast) => ({
     padding: hi?'5pt 10pt':'4.5pt 10pt',
-    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
+    borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:isLast?BD:'none',
     fontSize: hi?'9.5pt':'8.5pt', fontWeight: hi?700:500,
     textAlign:'center', verticalAlign:'middle',
     background: hi?'#fff8f0':(s?'#fafaf8':'white'),
@@ -542,7 +542,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
           </div>
 
           {/* 표 — width:100%로 항상 페이지 폭 채움 */}
-          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:'100%'}}>
+          <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
             <colgroup>
               <col style={{width:labelColW}} />
               {chunk.map(l=><col key={l.id} style={{width:dataColW}} />)}
@@ -550,8 +550,8 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             <thead>
               <tr>
                 <th style={thEmptyS}></th>
-                {chunk.map(l=>(
-                  <th key={l.id} style={thS}>
+                {chunk.map((l,li)=>(
+                  <th key={l.id} style={{...thS,borderRight:li===chunk.length-1?BD:'none'}}>
                     <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'12pt',fontWeight:700,color:'#0d1b2a',lineHeight:1.2,marginBottom:'3pt'}}>
                       {l.buildingName||'(이름없음)'}
                     </div>
@@ -566,8 +566,8 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               {chunk.some(l=>l.address) && (
                 <tr>
                   <td style={addrLabelS}>주소</td>
-                  {chunk.map(l=>(
-                    <td key={l.id} style={addrDataS}>{shortAddr(l.address)}</td>
+                  {chunk.map((l,li)=>(
+                    <td key={l.id} style={{...addrDataS,borderRight:li===chunk.length-1?BD:'none'}}>{shortAddr(l.address)}</td>
                   ))}
                 </tr>
               )}
@@ -584,12 +584,12 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                       {col.sec && (
                         <tr>
                           <td style={secLblS}>{col.sec}</td>
-                          {chunk.map(function(l){ return <td key={l.id} style={secCellS}></td>; })}
+                          {chunk.map(function(l,li){ return <td key={l.id} style={{...secCellS,borderRight:li===chunk.length-1?BD:'none'}}></td>; })}
                         </tr>
                       )}
                       <tr>
-                        <td style={col.hi ? plShi : plS}>{col.l}</td>
-                        {chunk.map(function(l){ return <td key={l.id} style={tdS(s,col.hi)}>{col.f(l)}</td>; })}
+                        <td style={col.hi ? plShi : plS}>{col.disp || col.l}</td>
+                        {chunk.map(function(l,li){ return <td key={l.id} style={tdS(s,col.hi,li===chunk.length-1)}>{col.f(l)}</td>; })}
                       </tr>
                     </React.Fragment>
                   );
@@ -678,85 +678,119 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
   const totMon = n(ls.rent)+n(ls.mgmtFee);
 
+  // ── 섹션 헤더 ──
   const hd = label => (
-    <div style={{fontSize:'11px',fontWeight:600,color:'#0d1b2a',marginBottom:'6px',letterSpacing:'.05em',borderBottom:'1px solid #e0dcd4',paddingBottom:'4px'}}>{label}</div>
+    <div style={{fontSize:'11px',fontWeight:600,color:'#0d1b2a',marginBottom:'6px',
+      letterSpacing:'.05em',borderBottom:'1px solid #e0dcd4',paddingBottom:'4px'}}>{label}</div>
   );
-  const row = (label, value, hi=false) => value ? (
+
+  // ── 임대조건 테이블 행 (라벨 우측정렬, 균형) ──
+  const row = (label, value, hi) => value ? (
     <tr>
-      <td style={{padding:'4px 8px',background:hi?'#fff3dc':'#f5f2eb',color:hi?'#a05800':'#555',fontWeight:hi?700:500,width:'100px',minWidth:'90px',borderBottom:'1px solid #eee',fontSize:'11px',letterSpacing:'.02em'}}>{label}</td>
-      <td style={{padding:'4px 10px',borderBottom:'1px solid #eee',color:'#0d1b2a',fontSize:hi?'14px':'12px',fontWeight:hi?700:400}}>{value}</td>
+      <td style={{
+        padding:'4px 10px 4px 6px',
+        background:hi?'#fff3dc':'#f5f2eb',
+        color:hi?'#a05800':'#555',
+        fontWeight:hi?700:500,
+        width:'90px', minWidth:'80px',
+        borderBottom:'1px solid #eee',
+        fontSize:'11px',
+        textAlign:'right',
+        letterSpacing:'.01em',
+        whiteSpace:'nowrap',
+      }}>{label}</td>
+      <td style={{
+        padding:'4px 8px',
+        borderBottom:'1px solid #eee',
+        color: hi?'#a05800':'#0d1b2a',
+        fontSize: hi?'14px':'12px',
+        fontWeight: hi?700:400,
+      }}>{value}</td>
     </tr>
   ) : null;
 
+  // ── 하단 금액 카드 ──
+  const amtCard = (label, value, dark) => (
+    <div style={{
+      background: dark?'#0d1b2a':'#f5f2eb',
+      padding:'10px 14px',
+      borderLeft: dark?'3px solid #c9a84c':'3px solid #e0dcd4',
+    }}>
+      <div style={{fontSize:'9px',color: dark?'#c9a84c':'#888',letterSpacing:'.18em',marginBottom:'4px',fontWeight:600}}>{label}</div>
+      <div style={{fontSize:'16px',fontWeight:700,color: dark?'white':'#0d1b2a',lineHeight:1,letterSpacing:'-.01em'}}>{value}</div>
+    </div>
+  );
+
+  // 층 표시: 해당층/총층
+  const floorDisp = ls.floor
+    ? (ls.totalFloor ? ls.floor + ' / ' + ls.totalFloor + '층' : ls.floor + '층')
+    : null;
+
   return (
     <div className="report-card" style={{background:'white',marginBottom:'24px',pageBreakBefore:isFirst?'auto':'always',breakBefore:isFirst?'auto':'page'}}>
+
+      {/* ── 헤더 ── */}
       <div style={{background:'white',padding:'14px 20px 12px',borderBottom:'2.5px solid #0d1b2a'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div>
             <div style={{fontSize:'8px',letterSpacing:'.25em',color:'#c9a84c',marginBottom:'4px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
-            {reportTitle && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'30px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'4px'}}>{reportTitle}</div>}
+            {reportTitle && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'28px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'4px'}}>{reportTitle}</div>}
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'18px',fontWeight:500,color:'#333',lineHeight:1.2}}>
               {ls.buildingName}
             </div>
-            {ls.floor && (
-              <div style={{fontSize:'13px',color:'#c9a84c',fontWeight:600,marginTop:'5px',letterSpacing:'.06em',fontFamily:"'Noto Sans KR',sans-serif"}}>
-                {floorLabel(ls)}
-              </div>
-            )}
             {ls.address && <div style={{fontSize:'10px',color:'#888',marginTop:'4px'}}>{ls.address}</div>}
           </div>
           <div style={{textAlign:'right',fontSize:'11px',color:'#555',fontWeight:500,flexShrink:0,marginLeft:'12px'}}>{reportDate}</div>
         </div>
       </div>
 
-      <div style={{padding:'22px 20px'}}>
-        <div style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:'24px',marginBottom:'14px',overflow:'hidden'}}>
-          <div style={{display:'flex',flexDirection:'column'}}>
-            <div aria-hidden="true" style={{visibility:'hidden',fontSize:'11px',fontWeight:600,paddingBottom:'4px',marginBottom:'6px',borderBottom:'1px solid transparent',letterSpacing:'.05em',flexShrink:0}}>X</div>
-            <div style={{height:'155px',overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',position:'relative',flexShrink:0}}>
-              {ls.photo
-                ? <img src={ls.photo} style={{width:'100%',height:'155px',objectFit:'cover',display:'block'}} />
-                : <div className="print-only" style={{height:'155px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
-              }
-            </div>
-            {n(ls.deposit) > 0 && (
-              <div style={{marginTop:'auto',paddingTop:'8px',flexShrink:0,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}}>
-                <div style={{padding:'7px 12px 8px',background:'#0d1b2a',borderLeft:'3px solid #c9a84c'}}>
-                  <div style={{fontSize:'7px',color:'#c9a84c',letterSpacing:'.25em',fontWeight:600,marginBottom:'3px'}}>DEPOSIT</div>
-                  <div style={{textAlign:'right',lineHeight:1}}>
-                    <span style={{fontFamily:"'Noto Sans KR',Arial,sans-serif",fontSize:'20px',fontWeight:700,color:'white',letterSpacing:'-.02em'}}>{fmt(ls.deposit).replace('원','')}</span>
-                    <span style={{fontSize:'11px',fontWeight:400,color:'#c9a84c',marginLeft:'3px'}}>원</span>
-                  </div>
-                </div>
-              </div>
-            )}
+      <div style={{padding:'18px 20px 14px'}}>
+
+        {/* ── 중단: 사진 + 임대조건 (높이 맞춤) ── */}
+        <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
+
+          {/* 사진 — 임대조건 높이에 맞춤 */}
+          <div style={{width:'220px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'160px'}}>
+            {ls.photo
+              ? <img src={ls.photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+              : <div className="print-only" style={{height:'100%',minHeight:'160px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
+            }
           </div>
 
-          <div style={{overflow:'hidden',minWidth:0}}>
+          {/* 임대조건 테이블 */}
+          <div style={{flex:1,minWidth:0}}>
             {hd('📋 임대 조건')}
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <tbody>
                 {row('전용면적', ls.exclusivePy ? ls.exclusivePy+'평 ('+(py2m(ls.exclusivePy)||'—')+'㎡)' : null)}
                 {row('계약면적', ls.contractPy  ? ls.contractPy+'평 ('+(py2m(ls.contractPy)||'—')+'㎡)' : null)}
-                {row('층',       ls.floor ? ls.floor+'층' : null)}
+                {row('층',       floorDisp)}
                 {row('주차',     ls.parking    || null)}
                 {row('승강기',   ls.elevator   || null)}
-                {row('입주일정', ls.moveIn     || null)}
                 {row('사용승인', ls.useAprDate || null)}
-                {row('임대료/월',   ls.rent    ? fmt(ls.rent)    : null, true)}
-                {row('관리비/월',   ls.mgmtFee ? fmt(ls.mgmtFee) : null)}
-                {totMon > 0 && row('월 합계', fmt(totMon), true)}
+                {row('입주일정', ls.moveIn     || null)}
               </tbody>
             </table>
           </div>
         </div>
 
+        {/* ── 하단 금액 카드 ── */}
+        {(ls.deposit || ls.rent || ls.mgmtFee) && (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px',marginBottom:'14px',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}}>
+            {ls.deposit && amtCard('DEPOSIT / 보증금',   fmt(ls.deposit),   false)}
+            {ls.rent    && amtCard('RENT / 임대료',      fmt(ls.rent),      false)}
+            {ls.mgmtFee && amtCard('MGMT / 관리비',      fmt(ls.mgmtFee),   false)}
+            {totMon > 0 && amtCard('TOTAL / 월 합계',    fmt(totMon),       true)}
+          </div>
+        )}
+
+        {/* ── 단가분석 ── */}
         {(noc || ls.contractPy) && (
           <div style={{marginBottom:'14px'}}>
             {hd('💰 단가 분석')}
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
               {noc && <div style={{background:'#fff3dc',padding:'8px 10px',border:'1px solid #f0d47c'}}>
-                <div style={{fontSize:'9px',color:'#a05800',marginBottom:'2px'}}>NOC (임대+관리/전용평)</div>
+                <div style={{fontSize:'9px',color:'#a05800',marginBottom:'2px'}}>NOC / 전용평</div>
                 <div style={{fontWeight:700,fontSize:'14px',color:'#a05800'}}>{noc.toLocaleString()}만원</div>
               </div>}
               {ls.rent && ls.contractPy && <div style={{background:'#f5f2eb',padding:'8px 10px'}}>
@@ -775,6 +809,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           </div>
         )}
 
+        {/* ── 인센티브 ── */}
         {(ls.rentFree || ls.fitOut) && (
           <div style={{marginBottom:'14px'}}>
             {hd('🎯 인센티브 조건')}
@@ -791,6 +826,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           </div>
         )}
 
+        {/* ── 비고 ── */}
         {ls.notes && (
           <div style={{marginBottom:'14px'}}>
             {hd('📝 비고')}
@@ -806,6 +842,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         )}
       </div>
 
+      {/* ── 인쇄 푸터 ── */}
       <div className="print-only" style={{margin:'4px 20px 14px',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',fontSize:'7.5pt',color:'#555'}}>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
           <tbody><tr style={{verticalAlign:'middle'}}>
@@ -824,6 +861,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
     </div>
   );
 }
+
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 출력 정보 패널 ──
