@@ -1,11 +1,12 @@
-// ── TIMES 임대 매물 관리 v1.4.7 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.7';
+// ── TIMES 임대 매물 관리 v1.4.8 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.8';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
 const PY  = 3.30579;
-const STO_CRED = 'times-lease-sb';   // 자격증명 localStorage key
-const STO_INFO = 'times-lease-info'; // 출력 정보 localStorage key
+const STO_CRED  = 'times-lease-sb';    // 자격증명 localStorage key
+const STO_INFO  = 'times-lease-info';  // 출력 정보 localStorage key
+const STO_CACHE = 'times-lease-cache'; // 매물 캐시 localStorage key
 const TBL = 'lease_listings';
 
 // ── Supabase 클라이언트 ──
@@ -87,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.7 ──
+// ── 비교표 컬럼 v1.4.8 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -489,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.7 ──
+// ── 비교표 v1.4.8 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -986,29 +987,50 @@ function App() {
 
   useEffect(() => { saveInfo(info); }, [info]);
 
-  const loadData = async (attempt) => {
-    var tries = attempt || 1;
+  const sortListings = data => {
+    return data.slice().sort(function(a,b){
+      var ao = (a.sortOrder !== undefined) ? a.sortOrder : (a.createdAt||0);
+      var bo = (b.sortOrder !== undefined) ? b.sortOrder : (b.createdAt||0);
+      return ao - bo;
+    });
+  };
+
+  const loadData = async () => {
+    // ① 캐시 즉시 표시 (로딩 화면 없음)
+    try {
+      var cached = JSON.parse(localStorage.getItem(STO_CACHE) || '[]');
+      if (cached.length > 0) {
+        setListings(sortListings(cached));
+        setDbReady(true);
+      }
+    } catch(ce) {}
+
+    // ② 백그라운드에서 Supabase 최신 데이터 동기화
     setLoading(true);
     setLoadErr('');
-    try {
-      const data = await dbLoad();
-      // sortOrder 기준 정렬 (없으면 createdAt 기준)
-      data.sort(function(a,b){
-        var ao = (a.sortOrder !== undefined) ? a.sortOrder : (a.createdAt||0);
-        var bo = (b.sortOrder !== undefined) ? b.sortOrder : (b.createdAt||0);
-        return ao - bo;
-      });
-      setListings(data);
-      setDbReady(true);
-      setLoading(false);
-    } catch(e) {
-      if (tries < 3) {
-        setTimeout(function(){ loadData(tries + 1); }, 2000);
-      } else {
-        setLoadErr(e.message || '연결 실패');
-        setLoading(false);
+    var ok = false;
+    for (var i = 1; i <= 3; i++) {
+      try {
+        var data = await dbLoad();
+        var sorted = sortListings(data);
+        setListings(sorted);
+        setDbReady(true);
+        setLoadErr('');
+        try { localStorage.setItem(STO_CACHE, JSON.stringify(sorted)); } catch(le) {}
+        ok = true;
+        break;
+      } catch(e) {
+        if (i < 3) {
+          await new Promise(function(r){ setTimeout(r, 2000); });
+        } else if (!ok) {
+          // 캐시도 없을 때만 오류 표시
+          var hasCached = false;
+          try { hasCached = JSON.parse(localStorage.getItem(STO_CACHE)||'[]').length > 0; } catch(x){}
+          if (!hasCached) setLoadErr(e.message || '연결 실패');
+        }
       }
     }
+    setLoading(false);
   };
 
   const handleConnect = () => { loadData(); };
@@ -1103,8 +1125,9 @@ function App() {
           </div>
         </div>
         <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
-          {loading && <span style={{fontSize:'13px',color:'#c9a84c'}}>⏳ 동기화 중…</span>}
-          {!loading && <span style={{fontSize:'13px',color:'#9aacbe'}}>☁ Supabase 연결됨 &nbsp;·&nbsp; 선택 {selCount}건</span>}
+          {loading && <span style={{fontSize:'12px',color:'#c9a84c'}}>↺ 동기화 중…</span>}
+          {!loading && loadErr && <span style={{fontSize:'12px',color:'#e07070'}}>⚠ 캐시 표시 중</span>}
+          {!loading && !loadErr && <span style={{fontSize:'12px',color:'#9aacbe'}}>☁ Supabase 연결됨 &nbsp;·&nbsp; 선택 {selCount}건</span>}
           {view!=='list' && <button onClick={()=>window.print()}
             style={{padding:'7px 16px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit',fontWeight:600}}>🖨 인쇄</button>}
         </div>
@@ -1143,10 +1166,10 @@ function App() {
       </div>
 
       <main className="print-main" style={{padding:'16px 24px 60px',maxWidth:'1200px',margin:'0 auto'}}>
-        {loading && (
+        {loading && listings.length===0 && (
           <div style={{textAlign:'center',padding:'60px',color:'#c9a84c'}}>
             <div style={{fontSize:'24px',marginBottom:'8px'}}>☁</div>
-            <div style={{fontSize:'12px'}}>Supabase에서 데이터를 불러오는 중…</div>
+            <div style={{fontSize:'12px'}}>데이터를 불러오는 중…</div>
           </div>
         )}
         {!loading && loadErr && (
