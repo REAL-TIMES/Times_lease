@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.4 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.4';
+// ── TIMES 임대 매물 관리 v1.4.5 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.5';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -24,18 +24,14 @@ const dbLoad = async () => {
     .order('updated_at', {ascending:true})
     .limit(200);
   if (error) throw error;
-  // 사진(base64)은 제외하고 먼저 로드 → 빠른 초기 로딩
+  // 사진(base64) 제외 → 초기 로딩 속도 개선
   return data.map(r => {
-    var d = r.data || {};
-    return {...d, _photoLoaded: false};
+    var d = Object.assign({}, r.data || {});
+    var photo = d.photo; // 보관
+    delete d.photo;
+    d._photo = photo;   // 별도 키로 보관 (표시용)
+    return d;
   });
-};
-// 개별 매물 사진 로드
-const dbLoadPhoto = async (id) => {
-  const { data, error } = await getSB()
-    .from(TBL).select('data').eq('id', id).single();
-  if (error) throw error;
-  return data.data ? data.data.photo : null;
 };
 const dbUpsert = async (listing) => {
   const { error } = await getSB().from(TBL)
@@ -89,7 +85,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.4 ──
+// ── 비교표 컬럼 v1.4.5 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -269,9 +265,23 @@ function ListingForm({ init, onSave, onClose }) {
 
   const handlePhoto = e => {
     const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = ev => set('photo', ev.target.result);
-    r.readAsDataURL(f);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_W = 900, MAX_H = 675, QUALITY = 0.72;
+        var w = img.width, h = img.height;
+        if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+        if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', QUALITY);
+        set('photo', compressed);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(f);
   };
 
   const handleSave = async () => {
@@ -402,7 +412,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
             title="출력 선택" style={{cursor:'pointer',marginLeft:'8px',flexShrink:0}} />
         </div>
 
-        {ls.photo && <img src={ls.photo} style={{width:'100%',height:'100px',objectFit:'cover',display:'block',marginBottom:'8px'}} />}
+        {(ls.photo||ls._photo) && <img src={ls.photo||ls._photo} style={{width:'100%',height:'100px',objectFit:'cover',display:'block',marginBottom:'8px'}} />}
 
         {(ls.exclusivePy||ls.contractPy) && (
           <div style={{display:'flex',gap:'12px',marginBottom:'8px',background:'#f7f4ef',padding:'6px 8px'}}>
@@ -471,7 +481,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.4 ──
+// ── 비교표 v1.4.5 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -777,8 +787,8 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
           {/* 사진 — 4:3 고정 비율 */}
           <div style={{width:'260px',height:'195px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
-            {ls.photo
-              ? <img src={ls.photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
+            {(ls.photo||ls._photo)
+              ? <img src={ls.photo||ls._photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
               : <div className="print-only" style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
             }
           </div>
