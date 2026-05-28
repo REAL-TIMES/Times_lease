@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.8 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.8';
+// ── TIMES 임대 매물 관리 v1.5.9 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.9';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.8 ──
+// ── 비교표 컬럼 v1.5.9 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.8 ──
+// ── 비교표 v1.5.9 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1329,7 +1329,7 @@ function App() {
               </div>
             ) : (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'16px'}}>
-                {listings.map(ls=>(
+                {filteredListings.map(ls=>(
                   <LCard key={ls.id} ls={ls}
                     onEdit={()=>{setEditing(ls);setShowForm(true);}}
                     onDelete={()=>onDelete(ls.id, ls.buildingName)}
