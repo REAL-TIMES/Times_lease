@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.6.1 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.1';
+// ── TIMES 임대 매물 관리 v1.6.2 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.2';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.1 ──
+// ── 비교표 컬럼 v1.6.2 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.1 ──
+// ── 비교표 v1.6.2 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -928,6 +928,7 @@ function KakaoMapView({ address, kakaoKey }) {
   var [mapStatus, setMapStatus] = useState('loading');
 
   useEffect(function() {
+    console.log('[KakaoMap] address:', address, 'kakaoKey:', kakaoKey ? kakaoKey.slice(0,6)+'...' : '없음');
     if (!address || !kakaoKey) { setMapStatus('nokey'); return; }
     setMapStatus('loading');
 
@@ -1048,12 +1049,12 @@ function InfoPanel({ info, setInfo, onDisconnect }) {
           <div style={{gridColumn:'1/-1'}}>
             <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>카카오맵 API 키 (리포트 지도 표시)</div>
             <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-              <input value={info.kakaoKey||''} placeholder="카카오 JavaScript 앱 키"
-                type="password" onChange={e=>f('kakaoKey',e.target.value)}
-                style={{flex:1,fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4'}} />
-              <a href="https://developers.kakao.com" target="_blank"
-                style={{fontSize:'11px',color:'#3a6fd8',whiteSpace:'nowrap',flexShrink:0}}>키 발급 →</a>
+              <input value={info.kakaoKey||''} placeholder="카카오 JavaScript 앱 키 (예: e9bdfdddb8c0...)"
+                type="text" onChange={e=>f('kakaoKey',e.target.value.trim())}
+                style={{flex:1,fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4',fontFamily:'monospace'}} />
             </div>
+            {info.kakaoKey && <div style={{fontSize:'10px',color:'#27ae60',marginTop:'2px'}}>✓ 키 입력됨 ({info.kakaoKey.length}자)</div>}
+            {!info.kakaoKey && <div style={{fontSize:'10px',color:'#e07070',marginTop:'2px'}}>키를 입력하면 리포트에 지도가 표시됩니다</div>}
           </div>
           <div style={{gridColumn:'1/-1'}}>
             <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>로고 이미지</div>
