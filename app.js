@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.9 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.9';
+// ── TIMES 임대 매물 관리 v1.6.0 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.0';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.9 ──
+// ── 비교표 컬럼 v1.6.0 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.9 ──
+// ── 비교표 v1.6.0 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1178,6 +1178,7 @@ function App() {
     if (appliedMax !== '' && !isNaN(py) && py > parseFloat(appliedMax)) return false;
     return true;
   });
+  var filteredSelCount = filteredListings.filter(function(l){return l.printSel;}).length;
 
   // Supabase 미연결
   if (!dbReady && !loading) {
@@ -1273,14 +1274,20 @@ function App() {
                       style={{padding:'5px 8px',fontSize:'11px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>✕ 초기화</button>
                   )}
                 </div>
-                <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:true})))}
+                <button onClick={()=>{
+                    var ids=new Set(filteredListings.map(function(l){return l.id;}));
+                    setListings(function(p){return p.map(function(x){return ids.has(x.id)?{...x,printSel:true}:x;});});
+                  }}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>전체 선택</button>
-                <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:false})))}
+                <button onClick={()=>{
+                    var ids=new Set(filteredListings.map(function(l){return l.id;}));
+                    setListings(function(p){return p.map(function(x){return ids.has(x.id)?{...x,printSel:false}:x;});});
+                  }}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>선택 해제</button>
                 {selCount > 0 && (
                   <button onClick={onBulkDelete}
                     style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #e07070',color:'#c0392b',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
-                    선택 삭제 ({selCount})
+                    선택 삭제 ({selCount}건)
                   </button>
                 )}
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
