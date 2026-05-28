@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.7 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.7';
+// ── TIMES 임대 매물 관리 v1.5.8 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.8';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.7 ──
+// ── 비교표 컬럼 v1.5.8 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.7 ──
+// ── 비교표 v1.5.8 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -1001,8 +1001,10 @@ function App() {
   const [loadErr,   setLoadErr]   = useState('');
   const [dbReady,   setDbReady]   = useState(false);
   const [dragId,    setDragId]    = useState(null);
-  const [areaMin, setAreaMin] = useState('');  // 전용면적 최저
-  const [areaMax, setAreaMax] = useState('');  // 전용면적 최대
+  const [areaMin,     setAreaMin]     = useState('');  // 드롭다운 선택값 (미적용)
+  const [areaMax,     setAreaMax]     = useState('');  // 드롭다운 선택값 (미적용)
+  const [appliedMin,  setAppliedMin]  = useState('');  // 실제 적용 최저
+  const [appliedMax,  setAppliedMax]  = useState('');  // 실제 적용 최대
   const [confirmDlg, setConfirmDlg] = useState(null);    // { message, subMessage, onConfirm }
   const [delBusy,   setDelBusy]    = useState(false);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
@@ -1172,8 +1174,8 @@ function App() {
   // 필터 적용된 목록
   var filteredListings = listings.filter(function(l){
     var py = parseFloat(l.exclusivePy);
-    if (areaMin !== '' && !isNaN(py) && py < parseFloat(areaMin)) return false;
-    if (areaMax !== '' && !isNaN(py) && py > parseFloat(areaMax)) return false;
+    if (appliedMin !== '' && !isNaN(py) && py < parseFloat(appliedMin)) return false;
+    if (appliedMax !== '' && !isNaN(py) && py > parseFloat(appliedMax)) return false;
     return true;
   });
 
@@ -1261,9 +1263,14 @@ function App() {
                     })}
                   </select>
                   <span style={{color:'#aaa',fontSize:'12px',flexShrink:0}}>이하</span>
-                  {(areaMin!==''||areaMax!=='') && (
-                    <button onClick={function(){setAreaMin('');setAreaMax('');}}
-                      style={{padding:'5px 8px',fontSize:'11px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontFamily:'inherit'}}>✕</button>
+                  <button
+                    onClick={function(){setAppliedMin(areaMin);setAppliedMax(areaMax);}}
+                    style={{padding:'6px 14px',fontSize:'13px',background:'#0d1b2a',color:'#c9a84c',border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:600,flexShrink:0}}>
+                    검색
+                  </button>
+                  {(appliedMin!==''||appliedMax!=='') && (
+                    <button onClick={function(){setAreaMin('');setAreaMax('');setAppliedMin('');setAppliedMax('');}}
+                      style={{padding:'5px 8px',fontSize:'11px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>✕ 초기화</button>
                   )}
                 </div>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:true})))}
