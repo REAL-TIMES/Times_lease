@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.3.6 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.6';
+// ── TIMES 임대 매물 관리 v1.3.7 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.7';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.3.6 ──
+// ── 비교표 컬럼 v1.3.7 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.6 ──
+// ── 비교표 v1.3.7 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -688,23 +688,24 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
   const row = (label, value, hi) => value ? (
     <tr>
       <td style={{
-        padding:'4px 10px 4px 6px',
+        padding:'5px 10px',
         background:hi?'#fff3dc':'#f5f2eb',
         color:hi?'#a05800':'#555',
-        fontWeight:hi?700:500,
-        width:'90px', minWidth:'80px',
+        fontWeight:hi?700:600,
+        width:'86px', minWidth:'80px',
         borderBottom:'1px solid #eee',
-        fontSize:'11px',
-        textAlign:'right',
-        letterSpacing:'.01em',
+        fontSize:'12px',
+        textAlign:'center',
+        letterSpacing:'.02em',
         whiteSpace:'nowrap',
       }}>{label}</td>
       <td style={{
-        padding:'4px 8px',
+        padding:'5px 10px',
         borderBottom:'1px solid #eee',
         color: hi?'#a05800':'#0d1b2a',
-        fontSize: hi?'14px':'12px',
+        fontSize: hi?'15px':'13px',
         fontWeight: hi?700:400,
+        textAlign:'center',
       }}>{value}</td>
     </tr>
   ) : null;
@@ -750,10 +751,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
 
           {/* 사진 — 임대조건 높이에 맞춤 */}
-          <div style={{width:'220px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'160px'}}>
+          <div style={{width:'230px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'200px'}}>
             {ls.photo
               ? <img src={ls.photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-              : <div className="print-only" style={{height:'100%',minHeight:'160px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
+              : <div className="print-only" style={{height:'100%',minHeight:'200px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
             }
           </div>
 
@@ -789,9 +790,9 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           <div style={{marginBottom:'14px'}}>
             {hd('💰 단가 분석')}
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}}>
-              {noc && <div style={{background:'#fff3dc',padding:'8px 10px',border:'1px solid #f0d47c'}}>
-                <div style={{fontSize:'9px',color:'#a05800',marginBottom:'2px'}}>NOC / 전용평</div>
-                <div style={{fontWeight:700,fontSize:'14px',color:'#a05800'}}>{noc.toLocaleString()}만원</div>
+              {ls.deposit && ls.contractPy && <div style={{background:'#f5f2eb',padding:'8px 10px'}}>
+                <div style={{fontSize:'9px',color:'#888',marginBottom:'2px'}}>보증금/계약평</div>
+                <div style={{fontWeight:700,color:'#0d1b2a'}}>{fmtPy(ls.deposit,ls.contractPy)}</div>
               </div>}
               {ls.rent && ls.contractPy && <div style={{background:'#f5f2eb',padding:'8px 10px'}}>
                 <div style={{fontSize:'9px',color:'#888',marginBottom:'2px'}}>임대료/계약평</div>
@@ -801,9 +802,9 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
                 <div style={{fontSize:'9px',color:'#888',marginBottom:'2px'}}>관리비/계약평</div>
                 <div style={{fontWeight:700,color:'#0d1b2a'}}>{fmtPy(ls.mgmtFee,ls.contractPy)}</div>
               </div>}
-              {ls.deposit && ls.contractPy && <div style={{background:'#f5f2eb',padding:'8px 10px'}}>
-                <div style={{fontSize:'9px',color:'#888',marginBottom:'2px'}}>보증금/계약평</div>
-                <div style={{fontWeight:700,color:'#0d1b2a'}}>{fmtPy(ls.deposit,ls.contractPy)}</div>
+              {noc && <div style={{background:'#fff3dc',padding:'8px 10px',border:'1px solid #f0d47c'}}>
+                <div style={{fontSize:'9px',color:'#a05800',marginBottom:'2px'}}>NOC / 전용평</div>
+                <div style={{fontWeight:700,fontSize:'14px',color:'#a05800'}}>{noc.toLocaleString()}만원</div>
               </div>}
             </div>
           </div>
