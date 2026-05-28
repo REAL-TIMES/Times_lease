@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.3.7 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.3.7';
+// ── TIMES 임대 매물 관리 v1.3.8 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.8';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -76,7 +76,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.3.7 ──
+// ── 비교표 컬럼 v1.3.8 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +458,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.3.7 ──
+// ── 비교표 v1.3.8 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -731,10 +731,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
     <div className="report-card" style={{background:'white',marginBottom:'24px',pageBreakBefore:isFirst?'auto':'always',breakBefore:isFirst?'auto':'page'}}>
 
       {/* ── 헤더 ── */}
-      <div style={{background:'white',padding:'14px 20px 12px',borderBottom:'2.5px solid #0d1b2a'}}>
+      <div style={{background:'white',padding:'16px 20px 14px',borderBottom:'2.5px solid #0d1b2a'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div>
-            <div style={{fontSize:'8px',letterSpacing:'.25em',color:'#c9a84c',marginBottom:'4px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
+            <div style={{fontSize:'9px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'10px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
             {reportTitle && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'28px',fontWeight:700,color:'#0d1b2a',lineHeight:1.1,marginBottom:'4px'}}>{reportTitle}</div>}
             <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'18px',fontWeight:500,color:'#333',lineHeight:1.2}}>
               {ls.buildingName}
@@ -751,10 +751,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
 
           {/* 사진 — 임대조건 높이에 맞춤 */}
-          <div style={{width:'230px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'200px'}}>
+          <div style={{width:'240px',height:'180px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4'}}>
             {ls.photo
               ? <img src={ls.photo} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} />
-              : <div className="print-only" style={{height:'100%',minHeight:'200px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
+              : <div className="print-only" style={{height:'180px',display:'flex',alignItems:'center',justifyContent:'center',color:'#ccc',fontSize:'11px'}}>사진 없음</div>
             }
           </div>
 
@@ -831,7 +831,7 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         {ls.notes && (
           <div style={{marginBottom:'14px'}}>
             {hd('📝 비고')}
-            <div style={{fontSize:'11px',color:'#1a1a2e',lineHeight:1.8,padding:'4px 0'}}>
+            <div style={{fontSize:'13px',color:'#1a1a2e',lineHeight:1.9,padding:'4px 0'}}>
               {ls.notes.split('\n').filter(l=>l.trim()).map((line,i)=>(
                 <div key={i} style={{display:'flex',gap:'6px'}}>
                   <span style={{color:'#c9a84c',fontWeight:700,flexShrink:0}}>•</span>
@@ -844,16 +844,16 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
       </div>
 
       {/* ── 인쇄 푸터 ── */}
-      <div className="print-only" style={{margin:'4px 20px 14px',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',fontSize:'7.5pt',color:'#555'}}>
+      <div className="print-only" style={{margin:'8px 20px 16px',borderTop:'1pt solid #c9a84c',paddingTop:'7pt',fontSize:'9pt',color:'#444'}}>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
           <tbody><tr style={{verticalAlign:'middle'}}>
             <td style={{verticalAlign:'middle'}}>
-              {logoSrc && <img src={logoSrc} style={{height:'16pt',objectFit:'contain',marginRight:'6pt',verticalAlign:'middle'}} />}
-              {bizName && <strong style={{color:'#0d1b2a'}}>{bizName}</strong>}
+              {logoSrc && <img src={logoSrc} style={{height:'20pt',objectFit:'contain',marginRight:'8pt',verticalAlign:'middle'}} />}
+              {bizName && <strong style={{color:'#0d1b2a',fontSize:'9.5pt'}}>{bizName}</strong>}
               {bizAddr && <span style={{color:'#777',marginLeft:'6pt'}}>{bizAddr}</span>}
             </td>
             {(agentName||agentPhone) && <td style={{textAlign:'right',whiteSpace:'nowrap',verticalAlign:'middle'}}>
-              {agentName  && <strong style={{color:'#0d1b2a',marginRight:'4pt'}}>{agentName}</strong>}
+              {agentName  && <strong style={{color:'#0d1b2a',marginRight:'6pt',fontSize:'9.5pt'}}>{agentName}</strong>}
               {agentPhone && <span>{agentPhone}</span>}
             </td>}
           </tr></tbody>
