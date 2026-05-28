@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.4.3 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.4.3';
+// ── TIMES 임대 매물 관리 v1.4.4 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.4.4';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -20,9 +20,22 @@ const initSB = (url, key) => {
 // ── DB 조작 ──
 const dbLoad = async () => {
   const { data, error } = await getSB()
-    .from(TBL).select('*').order('updated_at', {ascending:true});
+    .from(TBL).select('id, data, updated_at')
+    .order('updated_at', {ascending:true})
+    .limit(200);
   if (error) throw error;
-  return data.map(r => r.data);
+  // 사진(base64)은 제외하고 먼저 로드 → 빠른 초기 로딩
+  return data.map(r => {
+    var d = r.data || {};
+    return {...d, _photoLoaded: false};
+  });
+};
+// 개별 매물 사진 로드
+const dbLoadPhoto = async (id) => {
+  const { data, error } = await getSB()
+    .from(TBL).select('data').eq('id', id).single();
+  if (error) throw error;
+  return data.data ? data.data.photo : null;
 };
 const dbUpsert = async (listing) => {
   const { error } = await getSB().from(TBL)
@@ -76,7 +89,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.4.3 ──
+// ── 비교표 컬럼 v1.4.4 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -458,7 +471,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.4.3 ──
+// ── 비교표 v1.4.4 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -930,6 +943,7 @@ function App() {
   const [showForm,  setShowForm]  = useState(false);
   const [editing,   setEditing]   = useState(null);
   const [loading,   setLoading]   = useState(false);
+  const [loadErr,   setLoadErr]   = useState('');
   const [dbReady,   setDbReady]   = useState(false);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
@@ -956,20 +970,19 @@ function App() {
   const loadData = async (attempt) => {
     var tries = attempt || 1;
     setLoading(true);
+    setLoadErr('');
     try {
       const data = await dbLoad();
       setListings(data);
       setDbReady(true);
+      setLoading(false);
     } catch(e) {
       if (tries < 3) {
-        // timeout 등 일시적 오류 → 1.5초 후 자동 재시도
-        setTimeout(function(){ loadData(tries + 1); }, 1500);
+        setTimeout(function(){ loadData(tries + 1); }, 2000);
       } else {
-        alert('데이터 불러오기 실패 (3회 시도): ' + e.message + '\n\n페이지를 새로고침 해주세요.');
+        setLoadErr(e.message || '연결 실패');
         setLoading(false);
       }
-    } finally {
-      if (tries >= 3) setLoading(false);
     }
   };
 
@@ -1084,6 +1097,21 @@ function App() {
           <div style={{textAlign:'center',padding:'60px',color:'#c9a84c'}}>
             <div style={{fontSize:'24px',marginBottom:'8px'}}>☁</div>
             <div style={{fontSize:'12px'}}>Supabase에서 데이터를 불러오는 중…</div>
+          </div>
+        )}
+        {!loading && loadErr && (
+          <div style={{textAlign:'center',padding:'60px'}}>
+            <div style={{fontSize:'20px',marginBottom:'12px',color:'#c0392b'}}>⚠ 연결 오류</div>
+            <div style={{fontSize:'13px',color:'#888',marginBottom:'6px',maxWidth:'400px',margin:'0 auto 16px'}}>
+              {loadErr}
+            </div>
+            <div style={{fontSize:'12px',color:'#aaa',marginBottom:'20px'}}>
+              Supabase 일시적 오류입니다. 잠시 후 재시도해 주세요.
+            </div>
+            <button onClick={()=>loadData()}
+              style={{padding:'10px 28px',background:'#0d1b2a',color:'#c9a84c',border:'none',cursor:'pointer',fontSize:'14px',fontFamily:'inherit',fontWeight:600}}>
+              ↺ 다시 시도
+            </button>
           </div>
         )}
 
