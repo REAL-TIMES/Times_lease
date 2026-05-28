@@ -1,4 +1,4 @@
-// ── /api/parse.js v1.2.2 — Anthropic API 프록시 (Vercel 서버리스) ──
+// ── /api/parse.js v1.3.3 — Anthropic API 프록시 (Vercel 서버리스) ──
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -17,7 +17,8 @@ module.exports = async (req, res) => {
     + '필드 설명:\n'
     + '- buildingName: 건물명 (없으면 빈 문자열)\n'
     + '- address: 주소 전체 (없으면 빈 문자열)\n'
-    + '- floor: 해당 층 숫자만 (예: "3", 총층 정보 제외)\n'
+    + '- floor: 해당 층 숫자만 (예: "3", 총층 제외)\n'
+    + '- totalFloor: 건물 총층 숫자만 (예: "6", 없으면 빈 문자열)\n'
     + '- exclusivePy: 전용면적 평수 숫자만, 소수점 2자리 (㎡ 단위면 3.30579로 나누어 변환)\n'
     + '- contractPy: 계약/공급면적 평수 숫자만, 소수점 2자리 (동일 변환)\n'
     + '- deposit: 보증금 만원 단위 정수 문자열 (예: 2억=20000, 5000만원=5000)\n'
@@ -40,7 +41,7 @@ module.exports = async (req, res) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-7',
+        model: 'claude-3-haiku-20240307',
         max_tokens: 800,
         messages: [{ role: 'user', content: prompt }]
       })
