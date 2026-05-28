@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.2.9 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.2.9';
+// ── TIMES 임대 매물 관리 v1.3.2 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.3.2';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -61,6 +61,17 @@ const blank = () => ({
   photo:null, printSel:true,
 });
 const loadInfo = () => { try { return JSON.parse(localStorage.getItem(STO_INFO)||'{}'); } catch { return {}; } };
+// 주소에서 시·구 제거, 동+지번만 반환
+const shortAddr = addr => {
+  if (!addr) return '—';
+  var parts = addr.split(' ');
+  for (var i = 0; i < parts.length; i++) {
+    if (/[동읍면리가로길]\d*$/.test(parts[i]) || /^\d/.test(parts[i])) {
+      return parts.slice(i).join(' ');
+    }
+  }
+  return addr;
+};
 const saveInfo = obj => localStorage.setItem(STO_INFO, JSON.stringify(obj));
 
 const floorLabel = ls => {
@@ -68,7 +79,7 @@ const floorLabel = ls => {
   return ls.floor+'층'+(ls.totalFloor ? ' / 총 '+ls.totalFloor+'층' : '');
 };
 
-// ── 비교표 컬럼 v1.2.9 ──
+// ── 비교표 컬럼 v1.3.2 ──
 const CMP_COLS = [
   // 면적 (평만 표시)
   { l:'전용면적', sec:'면적',
@@ -431,7 +442,7 @@ function ListingForm({ init, onSave, onClose }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 매물 카드 (v1.2.9 레이아웃 개선) ──
+// ── 매물 카드 (v1.3.2 레이아웃 개선) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCard({ ls, onEdit, onDelete, onToggle }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
@@ -550,7 +561,7 @@ function LCard({ ls, onEdit, onDelete, onToggle }) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.2.9 (B안 미니멀 + 세부 조정) ──
+// ── 비교표 v1.3.2 (B안 미니멀 + 세부 조정) ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -562,7 +573,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   const chunks = [];
   for (let i=0; i<sel.length; i+=CHUNK) chunks.push(sel.slice(i,i+CHUNK));
 
-  // ── v1.2.9 스타일 ──
+  // ── v1.3.2 스타일 ──
   const labelColW = '80pt';
   const dataColW  = '130pt';
   const BD    = '0.5pt solid #e8e4dc';          // 일반 셀 보더
@@ -600,7 +611,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   const addrDataS = {
     background:'#f5f0e8', padding:'4pt 8pt', color:'#5a4a2a',
     borderTop:BD, borderBottom:BD, borderLeft:BD, borderRight:'none',
-    fontSize:'7pt', textAlign:'center', lineHeight:1.5, verticalAlign:'middle',
+    fontSize:'8.5pt', textAlign:'center', lineHeight:1.5, verticalAlign:'middle',
   };
 
   // 섹션 행 — 좌우 보더 없음, 상단 회색선만
@@ -633,13 +644,13 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
         <div key={ci} className="print-only"
           style={{pageBreakBefore:ci>0?'always':'auto',breakBefore:ci>0?'page':'auto'}}>
 
-          {/* 타이틀 — 불필요한 굵은 선 제거, 가는 골드 라인으로 */}
-          <div style={{borderBottom:'1pt solid #c9a84c',paddingBottom:'6pt',marginBottom:'10pt',display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
+          {/* 타이틀 */}
+          <div style={{borderBottom:'1pt solid #c9a84c',paddingBottom:'8pt',marginBottom:'12pt',display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
             <div>
-              <div style={{fontSize:'7pt',letterSpacing:'.18em',color:'#c9a84c',marginBottom:'3pt'}}>TIMES REAL ESTATE · 타임즈부동산중개</div>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'22pt',fontWeight:600,lineHeight:1.1,color:'#0d1b2a'}}>{reportTitle||'임대 매물 비교표'}</div>
+              <div style={{fontSize:'7pt',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'7pt'}}>TIMES REAL ESTATE</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'26pt',fontWeight:600,lineHeight:1.05,color:'#0d1b2a'}}>{reportTitle||'임대 매물 비교표'}</div>
             </div>
-            <div style={{textAlign:'right',fontSize:'8pt',color:'#aaa'}}>
+            <div style={{textAlign:'right',fontSize:'8pt',color:'#aaa',paddingBottom:'2pt'}}>
               {reportDate}&nbsp;·&nbsp;총 {sel.length}건
               {chunks.length>1 && <span>&nbsp;·&nbsp;{ci+1}/{chunks.length} 페이지</span>}
             </div>
@@ -672,7 +683,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                 <tr>
                   <td style={addrLabelS}>주소</td>
                   {chunk.map(l=>(
-                    <td key={l.id} style={addrDataS}>{l.address || '—'}</td>
+                    <td key={l.id} style={addrDataS}>{shortAddr(l.address)}</td>
                   ))}
                 </tr>
               )}
@@ -704,15 +715,15 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
           </table>
 
           {/* 하단 정보 */}
-          <div style={{marginTop:'10pt',borderTop:'0.8pt solid #c9a84c',paddingTop:'5pt',fontSize:'7.5pt',color:'#555',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{display:'flex',alignItems:'center',gap:'6pt'}}>
-              {logoSrc && <img src={logoSrc} style={{height:'16pt',objectFit:'contain'}} />}
-              {bizName && <strong style={{color:'#0d1b2a'}}>{bizName}</strong>}
-              {bizAddr && <span style={{color:'#777',marginLeft:'6pt'}}>{bizAddr}</span>}
+          <div style={{marginTop:'10pt',borderTop:'1pt solid #c9a84c',paddingTop:'6pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
+              {logoSrc && <img src={logoSrc} style={{height:'22pt',objectFit:'contain'}} />}
+              {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
+              {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
             </span>
-            <span>
-              {agentName && <strong style={{color:'#0d1b2a',marginRight:'6pt'}}>{agentName}</strong>}
-              {agentPhone && <span>{agentPhone}</span>}
+            <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
+              {agentName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
+              {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
             </span>
           </div>
         </div>
@@ -735,7 +746,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               <tr>
                 <td style={{background:'#f0ece2',padding:'5px 12px',textAlign:'center',fontSize:'11px',color:'#6b4f2a',fontWeight:700,letterSpacing:'.1em',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #e0dcd4'}}>주소</td>
                 {sel.map(l=>(
-                  <td key={l.id} style={{background:'#f5f0e8',padding:'5px 12px',textAlign:'center',fontSize:'11px',color:'#5a4a2a',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #e0dcd4'}}>{l.address||'—'}</td>
+                  <td key={l.id} style={{background:'#f5f0e8',padding:'5px 12px',textAlign:'center',fontSize:'13px',color:'#5a4a2a',borderRight:'0.5px solid #e8e4dc',borderBottom:'0.5px solid #e0dcd4'}}>{shortAddr(l.address)}</td>
                 ))}
               </tr>
             )}
