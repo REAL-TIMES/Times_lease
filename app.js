@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.5.5 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.5.5';
+// ── TIMES 임대 매물 관리 v1.5.6 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.5.6';
 const { useState, useEffect, useCallback } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.5.5 ──
+// ── 비교표 컬럼 v1.5.6 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.5.5 ──
+// ── 비교표 v1.5.6 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -921,6 +921,29 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 삭제 확인 모달 ──
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function ConfirmModal({ message, subMessage, onConfirm, onCancel, busy }) {
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(13,27,42,0.7)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+      <div style={{background:'white',width:'100%',maxWidth:'360px',padding:'28px 24px'}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'20px',fontWeight:600,color:'#0d1b2a',marginBottom:'10px'}}>삭제 확인</div>
+        <div style={{fontSize:'13px',color:'#333',marginBottom:'6px',lineHeight:1.6}}>{message}</div>
+        {subMessage && <div style={{fontSize:'11px',color:'#c0392b',background:'#fff5f4',padding:'8px 10px',marginBottom:'4px'}}>{subMessage}</div>}
+        <div style={{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'20px'}}>
+          <button onClick={onCancel} disabled={busy}
+            style={{padding:'8px 20px',background:'white',border:'1px solid #ccc',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>취소</button>
+          <button onClick={onConfirm} disabled={busy}
+            style={{padding:'8px 20px',background:busy?'#aaa':'#c0392b',color:'white',border:'none',cursor:busy?'not-allowed':'pointer',fontSize:'13px',fontFamily:'inherit',fontWeight:600}}>
+            {busy ? '삭제 중…' : '삭제'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 출력 정보 패널 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function InfoPanel({ info, setInfo, onDisconnect }) {
@@ -977,7 +1000,10 @@ function App() {
   const [loading,   setLoading]   = useState(false);
   const [loadErr,   setLoadErr]   = useState('');
   const [dbReady,   setDbReady]   = useState(false);
-  const [dragId,    setDragId]    = useState(null);  // Supabase 연결됨
+  const [dragId,    setDragId]    = useState(null);
+  const [areaFilter, setAreaFilter] = useState('all');   // 전용면적 필터
+  const [confirmDlg, setConfirmDlg] = useState(null);    // { message, subMessage, onConfirm }
+  const [delBusy,   setDelBusy]    = useState(false);  // Supabase 연결됨
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
     agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
@@ -1085,13 +1111,41 @@ function App() {
     setShowForm(false); setEditing(null);
   };
 
-  // 삭제
-  const onDelete = async (id, name) => {
-    if (!confirm(name+' 매물을 삭제하시겠습니까?')) return;
-    try {
-      await dbDelete(id);
-      setListings(p=>p.filter(x=>x.id!==id));
-    } catch(e) { alert('삭제 실패: '+e.message); }
+  // 삭제 (단건)
+  const onDelete = (id, name) => {
+    setConfirmDlg({
+      message: name+' 매물을 삭제하시겠습니까?',
+      onConfirm: async () => {
+        setDelBusy(true);
+        try {
+          await dbDelete(id);
+          setListings(p=>p.filter(x=>x.id!==id));
+          setConfirmDlg(null);
+        } catch(e) { alert('삭제 실패: '+e.message); }
+        finally { setDelBusy(false); }
+      }
+    });
+  };
+
+  // 일괄 삭제
+  const onBulkDelete = () => {
+    var sel = listings.filter(l=>l.printSel);
+    if (!sel.length) return;
+    setConfirmDlg({
+      message: '선택한 '+sel.length+'개 매물을 모두 삭제하시겠습니까?',
+      subMessage: '⚠ 이 작업은 되돌릴 수 없습니다.',
+      onConfirm: async () => {
+        setDelBusy(true);
+        try {
+          for (var i=0; i<sel.length; i++) {
+            await dbDelete(sel[i].id);
+          }
+          setListings(p=>p.filter(l=>!l.printSel));
+          setConfirmDlg(null);
+        } catch(e) { alert('삭제 실패: '+e.message); }
+        finally { setDelBusy(false); }
+      }
+    });
   };
 
   // 출력 선택 토글
@@ -1103,6 +1157,27 @@ function App() {
   };
 
   const selCount = listings.filter(l=>l.printSel).length;
+
+  // 전용면적 필터용 range 동적 생성 (10평 단위)
+  var areaRanges = (function(){
+    var pys = listings.map(function(l){ return parseFloat(l.exclusivePy); }).filter(function(v){ return !isNaN(v)&&v>0; });
+    if (!pys.length) return [];
+    var maxPy = Math.ceil(Math.max.apply(null,pys)/10)*10;
+    var minPy = Math.floor(Math.min.apply(null,pys)/10)*10;
+    var ranges = [];
+    for (var s=minPy; s<maxPy; s+=10) {
+      ranges.push({label:s+'~'+(s+10)+'평', min:s, max:s+10});
+    }
+    return ranges;
+  })();
+
+  // 필터 적용된 목록
+  var filteredListings = areaFilter==='all' ? listings : listings.filter(function(l){
+    var py = parseFloat(l.exclusivePy);
+    if (isNaN(py)) return false;
+    var parts = areaFilter.split('-');
+    return py >= parseFloat(parts[0]) && py < parseFloat(parts[1]);
+  });
 
   // Supabase 미연결
   if (!dbReady && !loading) {
@@ -1124,6 +1199,14 @@ function App() {
     <>
       <style dangerouslySetInnerHTML={{__html: printCSS}} />
       {showForm && <ListingForm init={editing} onSave={onSave} onClose={()=>{setShowForm(false);setEditing(null);}} />}
+      {confirmDlg && (
+        <ConfirmModal
+          message={confirmDlg.message}
+          subMessage={confirmDlg.subMessage}
+          onConfirm={confirmDlg.onConfirm}
+          onCancel={()=>setConfirmDlg(null)}
+          busy={delBusy} />
+      )}
 
       <header className="no-print" style={{background:'#0d1b2a',padding:'12px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div>
@@ -1162,10 +1245,24 @@ function App() {
             )}
             {view==='list' && (
               <>
+                {/* 전용면적 필터 */}
+                <select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}
+                  style={{padding:'6px 10px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit',minWidth:'120px'}}>
+                  <option value="all">전용면적 전체</option>
+                  {areaRanges.map(function(r){
+                    return <option key={r.label} value={r.min+'-'+r.max}>{r.label}</option>;
+                  })}
+                </select>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:true})))}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>전체 선택</button>
                 <button onClick={()=>setListings(p=>p.map(x=>({...x,printSel:false})))}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>선택 해제</button>
+                {selCount > 0 && (
+                  <button onClick={onBulkDelete}
+                    style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #e07070',color:'#c0392b',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
+                    선택 삭제 ({selCount})
+                  </button>
+                )}
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
                   style={{padding:'7px 18px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'14px',fontFamily:'inherit',fontWeight:600}}>+ 새 매물 등록</button>
               </>
@@ -1199,10 +1296,14 @@ function App() {
 
         {!loading && view==='list' && (
           <>
-            {listings.length===0 ? (
+            {filteredListings.length===0 ? (
               <div style={{textAlign:'center',padding:'80px 0',color:'#bbb'}}>
-                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',marginBottom:'10px',color:'#c9a84c'}}>등록된 매물이 없습니다</div>
-                <div style={{fontSize:'12px',marginBottom:'20px'}}>+ 새 매물 등록 버튼을 눌러 매물을 추가하세요</div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',marginBottom:'10px',color:'#c9a84c'}}>
+                  {listings.length===0 ? '등록된 매물이 없습니다' : '검색 결과가 없습니다'}
+                </div>
+                <div style={{fontSize:'12px',marginBottom:'20px'}}>
+                  {listings.length===0 ? '+ 새 매물 등록 버튼을 눌러 매물을 추가하세요' : '다른 면적 범위를 선택해보세요'}
+                </div>
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
                   style={{padding:'10px 24px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>+ 첫 매물 등록</button>
               </div>
