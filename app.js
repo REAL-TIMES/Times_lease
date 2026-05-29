@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.6.5 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.5';
+// ── TIMES 임대 매물 관리 v1.6.6 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.6';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.5 ──
+// ── 비교표 컬럼 v1.6.6 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.5 ──
+// ── 비교표 v1.6.6 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -928,55 +928,53 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 function KakaoMapView({ address, kakaoKey }) {
   var containerRef = useRef(null);
   var [mapStatus, setMapStatus] = useState('loading');
+  var [coords, setCoords] = useState(null);
 
+  // Step 1: /api/geocode로 좌표 조회
   useEffect(function() {
-    console.log('[KakaoMap] address:', address, 'kakaoKey:', kakaoKey ? kakaoKey.slice(0,6)+'...' : '없음');
     if (!address || !kakaoKey) { setMapStatus('nokey'); return; }
     setMapStatus('loading');
+    fetch('/api/geocode?address=' + encodeURIComponent(address))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data.lat && data.lng) {
+          setCoords({ lat: parseFloat(data.lat), lng: parseFloat(data.lng) });
+        } else {
+          setMapStatus('error');
+        }
+      })
+      .catch(function(){ setMapStatus('error'); });
+  }, [address, kakaoKey]);
 
-    function initMap() {
-      if (!containerRef.current) return;
+  // Step 2: 좌표 있으면 카카오맵 렌더링
+  useEffect(function() {
+    if (!coords || !containerRef.current || !kakaoKey) return;
+
+    function renderMap() {
       try {
-        var geocoder = new window.kakao.maps.services.Geocoder();
-        geocoder.addressSearch(address, function(result, status) {
-          console.log('[KakaoMap] geocode status:', status, 'results:', result ? result.length : 0);
-          if (status === window.kakao.maps.services.Status.OK) {
-            var coords = new window.kakao.maps.LatLng(result[0].y, result[0].x);
-            var mapObj = new window.kakao.maps.Map(containerRef.current, { center: coords, level: 3 });
-            new window.kakao.maps.Marker({ map: mapObj, position: coords });
-            setMapStatus('ok');
-          } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
-            console.log('[KakaoMap] 주소 없음 - address:', address);
-            setMapStatus('error');
-          } else {
-            console.log('[KakaoMap] API 오류 - 도메인 미등록 가능성', status);
-            setMapStatus('domain');
-          }
-        });
+        var latLng = new window.kakao.maps.LatLng(coords.lat, coords.lng);
+        var mapObj = new window.kakao.maps.Map(containerRef.current, { center: latLng, level: 3 });
+        new window.kakao.maps.Marker({ map: mapObj, position: latLng });
+        setMapStatus('ok');
       } catch(e) { setMapStatus('error'); }
     }
 
-    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-      initMap(); return;
-    }
-    // 이미 로드 중이면 기다림
+    if (window.kakao && window.kakao.maps) { renderMap(); return; }
+
     var existing = document.getElementById('kakao-sdk-script');
     if (existing) {
       var t = setInterval(function() {
-        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-          clearInterval(t); initMap();
-        }
+        if (window.kakao && window.kakao.maps) { clearInterval(t); renderMap(); }
       }, 200);
       return;
     }
-    // SDK 동적 로드
     var script = document.createElement('script');
     script.id = 'kakao-sdk-script';
-    script.src = '//dapi.kakao.com/v2/maps/sdk.js?appkey=' + kakaoKey + '&libraries=services&autoload=false';
-    script.onload = function() { window.kakao.maps.load(initMap); };
+    script.src = '//dapi.kakao.com/v2/maps/sdk.js?appkey=' + kakaoKey + '&autoload=false';
+    script.onload = function() { window.kakao.maps.load(renderMap); };
     script.onerror = function() { setMapStatus('error'); };
     document.head.appendChild(script);
-  }, [address, kakaoKey]);
+  }, [coords, kakaoKey]);
 
   return (
     <div style={{width:'260px',height:'195px',position:'relative',background:'#f0ede6'}}>
