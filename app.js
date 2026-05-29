@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.6.6 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.6.6';
+// ── TIMES 임대 매물 관리 v1.6.8 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.6.8';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.6.6 ──
+// ── 비교표 컬럼 v1.6.8 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.6.6 ──
+// ── 비교표 v1.6.8 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -926,81 +926,49 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 // ── 카카오맵 뷰 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function KakaoMapView({ address, kakaoKey }) {
-  var containerRef = useRef(null);
-  var [mapStatus, setMapStatus] = useState('loading');
-  var [coords, setCoords] = useState(null);
+  var [tile, setTile] = useState(null);   // {lat, lng}
+  var [err,  setErr]  = useState(false);
 
-  // Step 1: /api/geocode로 좌표 조회
   useEffect(function() {
-    if (!address || !kakaoKey) { setMapStatus('nokey'); return; }
-    setMapStatus('loading');
+    if (!address || !kakaoKey) return;
+    setErr(false); setTile(null);
     fetch('/api/geocode?address=' + encodeURIComponent(address))
       .then(function(r){ return r.json(); })
-      .then(function(data){
-        if (data.lat && data.lng) {
-          setCoords({ lat: parseFloat(data.lat), lng: parseFloat(data.lng) });
-        } else {
-          setMapStatus('error');
-        }
+      .then(function(d){
+        if (d.lat && d.lng) setTile({ lat: d.lat, lng: d.lng });
+        else setErr(true);
       })
-      .catch(function(){ setMapStatus('error'); });
+      .catch(function(){ setErr(true); });
   }, [address, kakaoKey]);
 
-  // Step 2: 좌표 있으면 카카오맵 렌더링
-  useEffect(function() {
-    if (!coords || !containerRef.current || !kakaoKey) return;
-
-    function renderMap() {
-      try {
-        var latLng = new window.kakao.maps.LatLng(coords.lat, coords.lng);
-        var mapObj = new window.kakao.maps.Map(containerRef.current, { center: latLng, level: 3 });
-        new window.kakao.maps.Marker({ map: mapObj, position: latLng });
-        setMapStatus('ok');
-      } catch(e) { setMapStatus('error'); }
-    }
-
-    if (window.kakao && window.kakao.maps) { renderMap(); return; }
-
-    var existing = document.getElementById('kakao-sdk-script');
-    if (existing) {
-      var t = setInterval(function() {
-        if (window.kakao && window.kakao.maps) { clearInterval(t); renderMap(); }
-      }, 200);
-      return;
-    }
-    var script = document.createElement('script');
-    script.id = 'kakao-sdk-script';
-    script.src = '//dapi.kakao.com/v2/maps/sdk.js?appkey=' + kakaoKey + '&autoload=false';
-    script.onload = function() { window.kakao.maps.load(renderMap); };
-    script.onerror = function() { setMapStatus('error'); };
-    document.head.appendChild(script);
-  }, [coords, kakaoKey]);
+  // 정적 지도 이미지 URL — /api/mapimage 서버 프록시
+  var imgUrl = tile
+    ? '/api/mapimage?lat=' + tile.lat + '&lng=' + tile.lng
+    : null;
 
   return (
-    <div style={{width:'260px',height:'195px',position:'relative',background:'#f0ede6'}}>
-      <div ref={containerRef} style={{width:'260px',height:'195px'}} />
-      {mapStatus==='loading' && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f0ede6',flexDirection:'column',gap:'8px'}}>
+    <div style={{width:'260px',height:'195px',position:'relative',background:'#f0ede6',overflow:'hidden'}}>
+      {tile && imgUrl && (
+        <img src={imgUrl}
+          onError={function(){setErr(true);}}
+          onLoad={function(){setErr(false);}}
+          style={{width:'260px',height:'195px',objectFit:'cover',display:'block'}} />
+      )}
+      {!tile && !err && (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'8px'}}>
           <div style={{fontSize:'20px'}}>🗺</div>
           <div style={{fontSize:'11px',color:'#aaa'}}>지도 불러오는 중…</div>
         </div>
       )}
-      {mapStatus==='error' && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'6px'}}>
+      {err && (
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'6px'}}>
           <div style={{fontSize:'18px'}}>📍</div>
-          <div style={{fontSize:'11px',color:'#aaa'}}>주소를 찾을 수 없습니다</div>
+          <div style={{fontSize:'11px',color:'#aaa'}}>지도를 불러올 수 없습니다</div>
         </div>
       )}
-      {mapStatus==='nokey' && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f2eb',flexDirection:'column',gap:'6px'}}>
-          <div style={{fontSize:'18px'}}>🔑</div>
-          <div style={{fontSize:'11px',color:'#aaa',textAlign:'center',padding:'0 12px'}}>출력 정보 설정에서<br/>카카오맵 API 키를 입력하세요</div>
-        </div>
-      )}
-      {mapStatus==='domain' && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#fff8f0',flexDirection:'column',gap:'6px',padding:'10px'}}>
-          <div style={{fontSize:'18px'}}>⚙️</div>
-          <div style={{fontSize:'10px',color:'#a05800',textAlign:'center',lineHeight:1.6}}>카카오 개발자센터에서<br/>Web 플랫폼 도메인을<br/>등록해 주세요</div>
+      {tile && (
+        <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.35)',padding:'3px 6px',fontSize:'9px',color:'white',textAlign:'center'}}>
+          {address}
         </div>
       )}
     </div>
