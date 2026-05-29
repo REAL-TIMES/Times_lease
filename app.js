@@ -1019,58 +1019,7 @@ function KakaoMapView({ address, kakaoKey }) {
       )}
     </div>
   );
-}) {
-  var [tile, setTile] = useState(null);   // {lat, lng}
-  var [err,  setErr]  = useState(false);
 
-  useEffect(function() {
-    if (!address || !kakaoKey) return;
-    setErr(false); setTile(null);
-    fetch('/api/geocode?address=' + encodeURIComponent(address))
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (d.lat && d.lng) setTile({ lat: d.lat, lng: d.lng });
-        else setErr(true);
-      })
-      .catch(function(){ setErr(true); });
-  }, [address, kakaoKey]);
-
-  // 정적 지도 이미지 URL — img 태그 직접 로드 (CORB 없음)
-  var imgUrl = tile
-    ? 'https://staticmap.openstreetmap.de/staticmap.php'
-      + '?center=' + tile.lat + ',' + tile.lng
-      + '&zoom=16&size=260x195'
-      + '&markers=' + tile.lat + ',' + tile.lng + ',red-pushpin'
-    : null;
-
-  return (
-    <div style={{width:'260px',height:'195px',position:'relative',background:'#f0ede6',overflow:'hidden'}}>
-      {tile && imgUrl && (
-        <img src={imgUrl}
-          onError={function(){setErr(true);}}
-          onLoad={function(){setErr(false);}}
-          style={{width:'260px',height:'195px',objectFit:'cover',display:'block'}} />
-      )}
-      {!tile && !err && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'8px'}}>
-          <div style={{fontSize:'20px'}}>🗺</div>
-          <div style={{fontSize:'11px',color:'#aaa'}}>지도 불러오는 중…</div>
-        </div>
-      )}
-      {err && (
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:'6px'}}>
-          <div style={{fontSize:'18px'}}>📍</div>
-          <div style={{fontSize:'11px',color:'#aaa'}}>지도를 불러올 수 없습니다</div>
-        </div>
-      )}
-      {tile && (
-        <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.35)',padding:'3px 6px',fontSize:'9px',color:'white',textAlign:'center'}}>
-          {address}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 삭제 확인 모달 ──
