@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.7.2 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.7.2';
+// ── TIMES 임대 매물 관리 v1.7.3 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.7.3';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.7.2 ──
+// ── 비교표 컬럼 v1.7.3 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.7.2 ──
+// ── 비교표 v1.7.3 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -946,16 +946,18 @@ function KakaoMapView({ address, kakaoKey }) {
         // 타일 내 픽셀 위치
         var px = Math.floor((tileX - tx) * 256);
         var py = Math.floor((tileY - ty) * 256);
-        // 2×2 타일 그리드로 충분한 지도 영역 확보
-        setTileInfo({
-          tiles: [
-            {url:'https://tile.openstreetmap.org/'+z+'/'+tx+'/'+ty+'.png',     dx:0,   dy:0},
-            {url:'https://tile.openstreetmap.org/'+z+'/'+(tx+1)+'/'+ty+'.png', dx:256, dy:0},
-            {url:'https://tile.openstreetmap.org/'+z+'/'+tx+'/'+(ty+1)+'.png', dx:0,   dy:256},
-            {url:'https://tile.openstreetmap.org/'+z+'/'+(tx+1)+'/'+(ty+1)+'.png',dx:256,dy:256}
-          ],
-          px: px, py: py
-        });
+        // 3×3 타일 그리드 — 어떤 위치든 항상 중앙에 표시
+        var tiles3 = [];
+        for (var di = -1; di <= 1; di++) {
+          for (var dj = -1; dj <= 1; dj++) {
+            tiles3.push({
+              url: 'https://tile.openstreetmap.org/'+z+'/'+(tx+di)+'/'+(ty+dj)+'.png',
+              dx: di * 256,
+              dy: dj * 256
+            });
+          }
+        }
+        setTileInfo({ tiles: tiles3, px: px, py: py });
       })
       .catch(function() { setMapErr(true); });
   }, [address, kakaoKey]);
