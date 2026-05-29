@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.7.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.7.0';
+// ── TIMES 임대 매물 관리 v1.7.1 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.7.1';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.7.0 ──
+// ── 비교표 컬럼 v1.7.1 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.7.0 ──
+// ── 비교표 v1.7.1 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -926,6 +926,55 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 // ── 카카오맵 뷰 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function KakaoMapView({ address, kakaoKey }) {
+  var [tileInfo, setTileInfo] = useState(null);
+  var [mapErr,   setMapErr]   = useState(false);
+
+  useEffect(function() {
+    if (!address || !kakaoKey) return;
+    setTileInfo(null); setMapErr(false);
+    fetch('/api/geocode?address=' + encodeURIComponent(address))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.lat || !d.lng) { setMapErr(true); return; }
+        var lat = parseFloat(d.lat), lng = parseFloat(d.lng), z = 16;
+        var n = Math.pow(2, z);
+        var tx = Math.floor((lng + 180) / 360 * n);
+        var sinLat = Math.sin(lat * Math.PI / 180);
+        var ty = Math.floor((0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n);
+        var px = Math.floor(((lng + 180) / 360 * n - tx) * 256);
+        var py = Math.floor(((0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n - ty) * 256);
+        setTileInfo({
+          url: 'https://tile.openstreetmap.org/' + z + '/' + tx + '/' + ty + '.png',
+          px: px, py: py
+        });
+      })
+      .catch(function() { setMapErr(true); });
+  }, [address, kakaoKey]);
+
+  if (!tileInfo && !mapErr) {
+    return <div style={{width:'260px',height:'195px',background:'#f0ede6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'#aaa'}}>지도 로딩 중...</div>;
+  }
+  if (mapErr || !tileInfo) {
+    return <div style={{width:'260px',height:'195px',background:'#f5f2eb',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'#aaa'}}>지도를 불러올 수 없습니다</div>;
+  }
+
+  var bgX = 130 - tileInfo.px;
+  var bgY = 97  - tileInfo.py;
+
+  return (
+    <div style={{width:'260px',height:'195px',position:'relative',overflow:'hidden',background:'#e8e4e0'}}>
+      <div style={{position:'absolute',width:'256px',height:'256px',left:bgX+'px',top:bgY+'px',
+        backgroundImage:'url(' + tileInfo.url + ')',backgroundSize:'256px 256px'}} />
+      <div style={{position:'absolute',left:'123px',top:'88px',width:'14px',height:'14px',
+        borderRadius:'50%',background:'#e74c3c',border:'2px solid white',
+        boxShadow:'0 1px 3px rgba(0,0,0,0.5)'}} />
+      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.4)',
+        padding:'3px 6px',fontSize:'9px',color:'white',textAlign:'center'}}>
+        {address}
+      </div>
+    </div>
+  );
+}) {
   var canvasRef = useRef(null);
   var [status,  setStatus]  = useState('loading');
   var [coords,  setCoords]  = useState(null);
@@ -1019,7 +1068,7 @@ function KakaoMapView({ address, kakaoKey }) {
       )}
     </div>
   );
-
+}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 삭제 확인 모달 ──
