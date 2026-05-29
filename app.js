@@ -1,5 +1,5 @@
-// ── TIMES 임대 매물 관리 v1.7.1 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.7.1';
+// ── TIMES 임대 매물 관리 v1.7.2 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.7.2';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
@@ -88,7 +88,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.7.1 ──
+// ── 비교표 컬럼 v1.7.2 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -490,7 +490,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.7.1 ──
+// ── 비교표 v1.7.2 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -936,15 +936,24 @@ function KakaoMapView({ address, kakaoKey }) {
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (!d.lat || !d.lng) { setMapErr(true); return; }
-        var lat = parseFloat(d.lat), lng = parseFloat(d.lng), z = 16;
+        var lat = parseFloat(d.lat), lng = parseFloat(d.lng), z = 17;
         var n = Math.pow(2, z);
-        var tx = Math.floor((lng + 180) / 360 * n);
+        var tileX = (lng + 180) / 360 * n;
         var sinLat = Math.sin(lat * Math.PI / 180);
-        var ty = Math.floor((0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n);
-        var px = Math.floor(((lng + 180) / 360 * n - tx) * 256);
-        var py = Math.floor(((0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n - ty) * 256);
+        var tileY = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n;
+        var tx = Math.floor(tileX);
+        var ty = Math.floor(tileY);
+        // 타일 내 픽셀 위치
+        var px = Math.floor((tileX - tx) * 256);
+        var py = Math.floor((tileY - ty) * 256);
+        // 2×2 타일 그리드로 충분한 지도 영역 확보
         setTileInfo({
-          url: 'https://tile.openstreetmap.org/' + z + '/' + tx + '/' + ty + '.png',
+          tiles: [
+            {url:'https://tile.openstreetmap.org/'+z+'/'+tx+'/'+ty+'.png',     dx:0,   dy:0},
+            {url:'https://tile.openstreetmap.org/'+z+'/'+(tx+1)+'/'+ty+'.png', dx:256, dy:0},
+            {url:'https://tile.openstreetmap.org/'+z+'/'+tx+'/'+(ty+1)+'.png', dx:0,   dy:256},
+            {url:'https://tile.openstreetmap.org/'+z+'/'+(tx+1)+'/'+(ty+1)+'.png',dx:256,dy:256}
+          ],
           px: px, py: py
         });
       })
@@ -958,18 +967,24 @@ function KakaoMapView({ address, kakaoKey }) {
     return <div style={{width:'260px',height:'195px',background:'#f5f2eb',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'#aaa'}}>지도를 불러올 수 없습니다</div>;
   }
 
-  var bgX = 130 - tileInfo.px;
-  var bgY = 97  - tileInfo.py;
+  // 마커를 중앙에 오도록 타일 오프셋 계산
+  var offX = 130 - tileInfo.px;
+  var offY = 97  - tileInfo.py;
+  var markerL = 130 - 7;
+  var markerT = 97  - 7;
 
   return (
     <div style={{width:'260px',height:'195px',position:'relative',overflow:'hidden',background:'#e8e4e0'}}>
-      <div style={{position:'absolute',width:'256px',height:'256px',left:bgX+'px',top:bgY+'px',
-        backgroundImage:'url(' + tileInfo.url + ')',backgroundSize:'256px 256px'}} />
-      <div style={{position:'absolute',left:'123px',top:'88px',width:'14px',height:'14px',
+      {tileInfo.tiles.map(function(t, i) {
+        return <div key={i} style={{position:'absolute',width:'256px',height:'256px',
+          left:(offX+t.dx)+'px',top:(offY+t.dy)+'px',
+          backgroundImage:'url('+t.url+')',backgroundSize:'256px 256px'}} />;
+      })}
+      <div style={{position:'absolute',left:markerL+'px',top:markerT+'px',width:'14px',height:'14px',
         borderRadius:'50%',background:'#e74c3c',border:'2px solid white',
-        boxShadow:'0 1px 3px rgba(0,0,0,0.5)'}} />
+        boxShadow:'0 1px 3px rgba(0,0,0,0.5)',zIndex:10}} />
       <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.4)',
-        padding:'3px 6px',fontSize:'9px',color:'white',textAlign:'center'}}>
+        padding:'3px 6px',fontSize:'9px',color:'white',textAlign:'center',zIndex:10}}>
         {address}
       </div>
     </div>
