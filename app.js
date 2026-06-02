@@ -1,12 +1,12 @@
-// ── TIMES 임대 매물 관리 v1.7.3 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.7.3';
+// ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
+const APP_VERSION = 'v1.8.0';
 const { useState, useEffect, useCallback, useRef } = React;
 
 // ── 상수 ──
 const PY  = 3.30579;
-const STO_CRED  = 'times-lease-sb';    // 자격증명 localStorage key
-const STO_INFO  = 'times-lease-info';  // 출력 정보 localStorage key
-const STO_CACHE = 'times-lease-cache'; // 매물 캐시 localStorage key
+const STO_CRED  = 'times-lease-sb';
+const STO_INFO  = 'times-lease-info';
+const STO_CACHE = 'times-lease-cache';
 const TBL = 'lease_listings';
 
 // ── Supabase 클라이언트 ──
@@ -20,10 +20,8 @@ const initSB = (url, key) => {
 
 // ── DB 조작 ──
 const dbLoad = async () => {
-  // RPC 함수로 사진 제외 → DB 레벨에서 데이터 크기 감소
   const { data, error } = await getSB().rpc('get_listings_no_photo');
   if (error) {
-    // RPC 없으면 일반 쿼리로 fallback (사진 JS에서 제외)
     const { data: d2, error: e2 } = await getSB()
       .from(TBL).select('id, data, updated_at')
       .order('updated_at', {ascending:true}).limit(200);
@@ -74,9 +72,7 @@ const blank = () => ({
 });
 const loadInfo = () => { try { return JSON.parse(localStorage.getItem(STO_INFO)||'{}'); } catch { return {}; } };
 const saveInfo = obj => localStorage.setItem(STO_INFO, JSON.stringify(obj));
-// 층 레이블
 const floorLabel = ls => ls.floor + '층' + (ls.totalFloor ? ' / 총 ' + ls.totalFloor + '층' : '');
-// 주소 단축 (시/구 제거, 동+지번만)
 const shortAddr = addr => {
   if (!addr) return '—';
   var parts = addr.split(' ');
@@ -88,7 +84,7 @@ const shortAddr = addr => {
   return addr;
 };
 
-// ── 비교표 컬럼 v1.7.3 ──
+// ── 비교표 컬럼 v1.8.0 ──
 const CMP_COLS = [
   { l:'전용면적', sec:'면  적', f:ls => ls.exclusivePy ? ls.exclusivePy+'평' : '—' },
   { l:'계약면적',              f:ls => ls.contractPy   ? ls.contractPy+'평'  : '—' },
@@ -105,6 +101,7 @@ const CMP_COLS = [
   { l:'렌트프리',              f:ls => ls.rentFree   || '—' },
   { l:'핏아웃',                f:ls => ls.fitOut     || '—' },
 ];
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 네이버 텍스트 파싱 모달 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -308,7 +305,6 @@ function ListingForm({ init, onSave, onClose }) {
           <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'18px',color:'#888'}}>×</button>
         </div>
 
-        {/* 네이버 자동 입력 버튼 */}
         {showNaver && <NaverParseModal onParsed={handleParsed} onClose={()=>setShowNaver(false)} />}
         <div style={{marginBottom:'18px',padding:'12px 14px',background:'#f0f6ff',border:'1px solid #b8d0f5',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}}>
           <div>
@@ -490,7 +486,7 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ── 비교표 v1.7.3 ──
+// ── 비교표 v1.8.0 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc }) {
   const sel = listings.filter(l=>l.printSel);
@@ -561,7 +557,6 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
         <div key={ci} className="print-only"
           style={{pageBreakBefore:ci>0?'always':'auto',breakBefore:ci>0?'page':'auto'}}>
 
-          {/* 타이틀 */}
           <div style={{borderBottom:'1pt solid #c9a84c',paddingBottom:'8pt',marginBottom:'12pt',display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
             <div>
               <div style={{fontSize:'7pt',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'7pt'}}>TIMES REAL ESTATE</div>
@@ -573,7 +568,6 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </div>
           </div>
 
-          {/* 표 — width:100%로 항상 페이지 폭 채움 */}
           <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:chunk.length===CHUNK?'100%':(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
             <colgroup>
               <col style={{width:labelColW}} />
@@ -630,7 +624,6 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </tbody>
           </table>
 
-          {/* 푸터 */}
           <div style={{marginTop:'10pt',borderTop:'1pt solid #c9a84c',paddingTop:'6pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
               {logoSrc && <img src={logoSrc} style={{height:'22pt',objectFit:'contain'}} />}
@@ -645,7 +638,6 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
         </div>
       ))}
 
-      {/* 화면 미리보기 */}
       <div className="screen-only" style={{overflowX:'auto'}}>
         <table style={{borderCollapse:'collapse',minWidth:'500px',fontSize:'12px',borderTop:'2px solid #c9a84c'}}>
           <thead>
@@ -710,13 +702,11 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
   const totMon = n(ls.rent)+n(ls.mgmtFee);
 
-  // ── 섹션 헤더 ──
   const hd = label => (
     <div style={{fontSize:'13px',fontWeight:600,color:'#0d1b2a',marginBottom:'8px',
       letterSpacing:'.04em',borderBottom:'1px solid #e0dcd4',paddingBottom:'5px'}}>{label}</div>
   );
 
-  // ── 임대조건 테이블 행 (라벨 우측정렬, 균형) ──
   const row = (label, value, hi) => value ? (
     <tr>
       <td style={{
@@ -742,7 +732,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
     </tr>
   ) : null;
 
-  // ── 하단 금액 카드 ──
   const amtCard = (label, value, dark) => (
     <div style={{
       background: dark?'#0d1b2a':'#f5f2eb',
@@ -754,7 +743,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
     </div>
   );
 
-  // 층 표시: 해당층/총층
   const floorDisp = ls.floor
     ? (ls.totalFloor ? ls.floor + ' / ' + ls.totalFloor + '층' : ls.floor + '층')
     : null;
@@ -762,11 +750,8 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
   return (
     <div className="report-card" style={{background:'white',marginBottom:'24px',pageBreakBefore:isFirst?'auto':'always',breakBefore:isFirst?'auto':'page'}}>
 
-      {/* ── 헤더 ── */}
       <div style={{background:'white',padding:'16px 20px 14px',borderBottom:'2.5px solid #0d1b2a'}}>
-        {/* 서브타이틀 */}
         <div style={{fontSize:'9px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'10px'}}>TIMES REAL ESTATE · 임대 매물 리포트</div>
-        {/* 건물명 ↔ 문서제목 동일 라인 */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'5px'}}>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',fontWeight:600,color:'#0d1b2a',lineHeight:1.2}}>
             {ls.buildingName}
@@ -777,7 +762,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
             </div>
           )}
         </div>
-        {/* 주소 ↔ 날짜 동일 라인 */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           {ls.address
             ? <div style={{fontSize:'10px',color:'#888'}}>{ls.address}</div>
@@ -788,13 +772,10 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 
       <div style={{padding:'18px 20px 14px'}}>
 
-        {/* ── 임대조건 헤더 (사진 위) ── */}
         {hd('📋 임대 조건')}
 
-        {/* ── 사진(4:3) + 임대조건 테이블 — 헤더 아래 나란히 ── */}
         <div style={{display:'flex',gap:'20px',marginBottom:'12px',alignItems:'stretch'}}>
 
-          {/* 사진 — 4:3 / 없으면 카카오맵 / 없으면 로고 */}
           <div style={{width:'260px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'180px',display:'flex',alignItems:'stretch'}}>
             {(ls.photo||ls._photo)
               ? <img src={ls.photo||ls._photo} style={{width:'100%',objectFit:'cover',display:'block'}} />
@@ -810,7 +791,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
             }
           </div>
 
-          {/* 임대조건 테이블 — 사진 우측 */}
           <div style={{flex:1,minWidth:0}}>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <tbody>
@@ -826,7 +806,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           </div>
         </div>
 
-        {/* ── 하단 금액 카드 ── */}
         {(ls.deposit || ls.rent || ls.mgmtFee) && (
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px',marginBottom:'14px',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}}>
             {ls.deposit && amtCard('DEPOSIT / 보증금',   fmt(ls.deposit),   false)}
@@ -836,14 +815,12 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           </div>
         )}
 
-        {/* ── 부가세 별도 표시 ── */}
         {(ls.rent || ls.mgmtFee) && (
           <div style={{textAlign:'right',fontSize:'10px',color:'#aaa',letterSpacing:'.04em',marginTop:'-8px',marginBottom:'10px',fontWeight:400}}>
             임대료·관리비 부가세 별도
           </div>
         )}
 
-        {/* ── 단가분석 ── */}
         {(noc || ls.contractPy) && (
           <div style={{marginBottom:'14px'}}>
             {hd('💰 단가 분석')}
@@ -868,7 +845,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           </div>
         )}
 
-        {/* ── 인센티브 ── */}
         {(ls.rentFree || ls.fitOut) && (
           <div style={{marginBottom:'14px'}}>
             {hd('🎯 인센티브 조건')}
@@ -885,7 +861,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           </div>
         )}
 
-        {/* ── 비고 ── */}
         {ls.notes && (
           <div style={{marginBottom:'14px'}}>
             {hd('📝 부가설명')}
@@ -901,7 +876,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
         )}
       </div>
 
-      {/* ── 인쇄 푸터 ── */}
       <div className="print-only" style={{margin:'8px 20px 16px',borderTop:'1pt solid #c9a84c',paddingTop:'7pt',fontSize:'9pt',color:'#444'}}>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
           <tbody><tr style={{verticalAlign:'middle'}}>
@@ -921,7 +895,6 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
   );
 }
 
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 카카오맵 뷰 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -937,16 +910,14 @@ function KakaoMapView({ address, kakaoKey }) {
       .then(function(d) {
         if (!d.lat || !d.lng) { setMapErr(true); return; }
         var lat = parseFloat(d.lat), lng = parseFloat(d.lng), z = 17;
-        var n = Math.pow(2, z);
-        var tileX = (lng + 180) / 360 * n;
+        var nTiles = Math.pow(2, z);
+        var tileX = (lng + 180) / 360 * nTiles;
         var sinLat = Math.sin(lat * Math.PI / 180);
-        var tileY = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * n;
+        var tileY = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * nTiles;
         var tx = Math.floor(tileX);
         var ty = Math.floor(tileY);
-        // 타일 내 픽셀 위치
         var px = Math.floor((tileX - tx) * 256);
         var py = Math.floor((tileY - ty) * 256);
-        // 3×3 타일 그리드 — 어떤 위치든 항상 중앙에 표시
         var tiles3 = [];
         for (var di = -1; di <= 1; di++) {
           for (var dj = -1; dj <= 1; dj++) {
@@ -969,7 +940,6 @@ function KakaoMapView({ address, kakaoKey }) {
     return <div style={{width:'260px',height:'195px',background:'#f5f2eb',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'#aaa'}}>지도를 불러올 수 없습니다</div>;
   }
 
-  // 마커를 중앙에 오도록 타일 오프셋 계산
   var offX = 130 - tileInfo.px;
   var offY = 97  - tileInfo.py;
   var markerL = 130 - 7;
@@ -1084,12 +1054,12 @@ function App() {
   const [loadErr,   setLoadErr]   = useState('');
   const [dbReady,   setDbReady]   = useState(false);
   const [dragId,    setDragId]    = useState(null);
-  const [areaMin,     setAreaMin]     = useState('');  // 드롭다운 선택값 (미적용)
-  const [areaMax,     setAreaMax]     = useState('');  // 드롭다운 선택값 (미적용)
-  const [appliedMin,  setAppliedMin]  = useState('');  // 실제 적용 최저
-  const [appliedMax,  setAppliedMax]  = useState('');  // 실제 적용 최대
-  const [confirmDlg, setConfirmDlg] = useState(null);    // { message, subMessage, onConfirm }
-  const [delBusy,   setDelBusy]    = useState(false);  // Supabase 연결됨
+  const [areaMin,     setAreaMin]     = useState('');
+  const [areaMax,     setAreaMax]     = useState('');
+  const [appliedMin,  setAppliedMin]  = useState('');
+  const [appliedMax,  setAppliedMax]  = useState('');
+  const [confirmDlg, setConfirmDlg] = useState(null);
+  const [delBusy,   setDelBusy]    = useState(false);
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
     agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'', kakaoKey:'',
@@ -1121,7 +1091,6 @@ function App() {
   };
 
   const loadData = async () => {
-    // 캐시가 있으면 즉시 표시
     try {
       var raw = localStorage.getItem(STO_CACHE);
       if (raw) {
@@ -1133,7 +1102,6 @@ function App() {
       }
     } catch(e1) {}
 
-    // Supabase에서 최신 데이터 로드
     setLoading(true);
     setLoadErr('');
     try {
@@ -1163,7 +1131,7 @@ function App() {
     setListings([]);
   };
 
-  // 드래그 앤 드롭 순서 변경
+  // 드래그 앤 드롭
   const handleDragStart = id => setDragId(id);
   const handleDragOver  = id => {
     if (!dragId || dragId === id) return;
@@ -1179,10 +1147,8 @@ function App() {
   };
   const handleDrop = async () => {
     setDragId(null);
-    // sortOrder 재할당 후 저장
     setListings(prev => {
       var updated = prev.map((ls,i) => ({...ls, sortOrder:i}));
-      // 백그라운드 저장
       updated.forEach(ls => dbUpsert(ls).catch(e=>console.warn('순서저장 오류:',e)));
       return updated;
     });
@@ -1215,7 +1181,8 @@ function App() {
 
   // 일괄 삭제
   const onBulkDelete = () => {
-    var sel = listings.filter(l=>l.printSel);
+    // ★ 필터된 매물 중 선택된 것만 삭제
+    var sel = filteredListings.filter(l=>l.printSel);
     if (!sel.length) return;
     setConfirmDlg({
       message: '선택한 '+sel.length+'개 매물을 모두 삭제하시겠습니까?',
@@ -1226,7 +1193,8 @@ function App() {
           for (var i=0; i<sel.length; i++) {
             await dbDelete(sel[i].id);
           }
-          setListings(p=>p.filter(l=>!l.printSel));
+          var delIds = new Set(sel.map(function(l){ return l.id; }));
+          setListings(p=>p.filter(l=>!delIds.has(l.id)));
           setConfirmDlg(null);
         } catch(e) { alert('삭제 실패: '+e.message); }
         finally { setDelBusy(false); }
@@ -1244,7 +1212,7 @@ function App() {
 
   const selCount = listings.filter(l=>l.printSel).length;
 
-  // 전용면적 드롭다운 옵션 (10평 단위, 실제 데이터 기반)
+  // 전용면적 드롭다운 옵션
   var areaOptions = (function(){
     var pys = listings.map(function(l){ return parseFloat(l.exclusivePy); }).filter(function(v){ return !isNaN(v)&&v>0; });
     if (!pys.length) return [];
@@ -1254,14 +1222,16 @@ function App() {
     return opts;
   })();
 
-  // 필터 적용된 목록
+  // ★ 면적 필터 적용 목록
   var filteredListings = listings.filter(function(l){
     var py = parseFloat(l.exclusivePy);
     if (appliedMin !== '' && !isNaN(py) && py < parseFloat(appliedMin)) return false;
     if (appliedMax !== '' && !isNaN(py) && py > parseFloat(appliedMax)) return false;
     return true;
   });
-  var filteredSelCount = filteredListings.filter(function(l){return l.printSel;}).length;
+
+  // ★ 필터 내 선택 건수
+  var filteredSelCount = filteredListings.filter(function(l){ return l.printSel; }).length;
 
   // Supabase 미연결
   if (!dbReady && !loading) {
@@ -1303,7 +1273,16 @@ function App() {
         <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
           {loading && <span style={{fontSize:'12px',color:'#c9a84c'}}>↺ 동기화 중…</span>}
           {!loading && loadErr && <span style={{fontSize:'12px',color:'#e07070'}}>⚠ 캐시 표시 중</span>}
-          {!loading && !loadErr && <span style={{fontSize:'12px',color:'#9aacbe'}}>☁ Supabase 연결됨 &nbsp;·&nbsp; 선택 {selCount}건</span>}
+          {!loading && !loadErr && (
+            <span style={{fontSize:'12px',color:'#9aacbe'}}>
+              ☁ Supabase 연결됨
+              {/* ★ 필터 적용 중이면 필터 내 선택 건수 표시, 아니면 전체 선택 건수 */}
+              {(appliedMin !== '' || appliedMax !== '')
+                ? <span> &nbsp;·&nbsp; 필터 내 선택 {filteredSelCount}건 / 전체 선택 {selCount}건</span>
+                : <span> &nbsp;·&nbsp; 선택 {selCount}건</span>
+              }
+            </span>
+          )}
           {view!=='list' && <button onClick={()=>window.print()}
             style={{padding:'7px 16px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit',fontWeight:600}}>🖨 인쇄</button>}
         </div>
@@ -1329,7 +1308,7 @@ function App() {
             )}
             {view==='list' && (
               <>
-                {/* 전용면적 필터 — 최저/최대 */}
+                {/* 전용면적 필터 */}
                 <div style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'13px'}}>
                   <select value={areaMin} onChange={e=>setAreaMin(e.target.value)}
                     style={{padding:'6px 8px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit'}}>
@@ -1357,6 +1336,7 @@ function App() {
                       style={{padding:'5px 8px',fontSize:'11px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>✕ 초기화</button>
                   )}
                 </div>
+                {/* ★ 전체선택/선택해제: filteredListings 기준으로만 동작 */}
                 <button onClick={()=>{
                     var ids=new Set(filteredListings.map(function(l){return l.id;}));
                     setListings(function(p){return p.map(function(x){return ids.has(x.id)?{...x,printSel:true}:x;});});
@@ -1367,10 +1347,11 @@ function App() {
                     setListings(function(p){return p.map(function(x){return ids.has(x.id)?{...x,printSel:false}:x;});});
                   }}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>선택 해제</button>
-                {selCount > 0 && (
+                {/* ★ 선택 삭제: filteredListings 내 선택 건수 기준 */}
+                {filteredSelCount > 0 && (
                   <button onClick={onBulkDelete}
                     style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #e07070',color:'#c0392b',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
-                    선택 삭제 ({selCount}건)
+                    선택 삭제 ({filteredSelCount}건)
                   </button>
                 )}
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
@@ -1437,16 +1418,18 @@ function App() {
           </>
         )}
 
+        {/* ★ 비교표: filteredListings만 넘김 (필터된 매물 중 printSel인 것만 표시) */}
         {!loading && view==='compare' && (
-          <LCompare listings={listings} reportTitle={reportTitle||'임대 매물 비교표'} reportDate={reportDate}
+          <LCompare listings={filteredListings} reportTitle={reportTitle||'임대 매물 비교표'} reportDate={reportDate}
             bizName={info.bizName} bizAddr={info.bizAddr} agentName={info.agentName} agentPhone={info.agentPhone} logoSrc={info.logoSrc} />
         )}
 
+        {/* ★ 리포트: filteredListings 중 printSel인 것만 */}
         {!loading && view==='report' && (
           <div>
-            {listings.filter(l=>l.printSel).length===0
+            {filteredListings.filter(l=>l.printSel).length===0
               ? <div style={{textAlign:'center',padding:'60px',color:'#aaa'}}>리포트 출력할 매물을 목록에서 선택(체크)하세요</div>
-              : listings.filter(l=>l.printSel).map((l,i)=>(
+              : filteredListings.filter(l=>l.printSel).map((l,i)=>(
                   <LReportCard key={l.id} ls={l} isFirst={i===0}
                     reportTitle={reportTitle} reportDate={reportDate}
                     bizName={info.bizName} bizAddr={info.bizAddr}
