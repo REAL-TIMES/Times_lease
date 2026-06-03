@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.8.2';
+const APP_VERSION = 'v1.8.3';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -624,19 +624,19 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
               })()}
             </tbody>
           </table>
-          <div className="cmp-footer" style={{marginTop:'8pt',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
-              {logoSrc && <img src={logoSrc} style={{height:'20pt',objectFit:'contain'}} />}
-              {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
-              {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
-            </span>
-            <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
-              {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
-              {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
-            </span>
-          </div>
         </div>
       ))}
+      <div className="cmp-footer" style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',fontSize:'9pt',color:'#444',background:'white',padding:'5pt 0 0'}}>
+        <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
+          {logoSrc && <img src={logoSrc} style={{height:'20pt',objectFit:'contain'}} />}
+          {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
+          {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
+        </span>
+        <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
+          {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
+          {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
+        </span>
+      </div>
 
       <div className="no-print" style={{overflowX:'auto',marginTop:'24px'}}>
         <table style={{borderCollapse:'collapse',minWidth:'500px',fontSize:'12px',borderTop:'2px solid #c9a84c'}}>
@@ -1252,15 +1252,9 @@ function App() {
     if (!cred) return <SBSetup onConnect={handleConnect} />;
   }
 
-  const compareFtr = [
-    info.bizName, info.bizAddr ? '  |  ' + info.bizAddr : '',
-    info.agentName ? '   ' + info.agentName : '',
-    info.agentPhone ? '  ' + info.agentPhone : ''
-  ].join('');
-
   const printCSS = view==='report'
     ? '@media print { @page { size:A4 portrait !important; margin:10mm 12mm 18mm; } .report-card { page-break-after:always; break-after:page; } }'
-    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 22mm; } .cmp-footer { display:none !important; } @page { @bottom-left { content:"' + (info.bizName||'') + (info.bizAddr ? '  |  '+info.bizAddr : '') + '"; font-size:7.5pt; color:#555; font-family:sans-serif; } @bottom-right { content:"' + (info.agentName||'') + (info.agentPhone ? '  ' + info.agentPhone : '') + '"; font-size:7.5pt; color:#555; font-family:sans-serif; } } }';
+    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 20mm; } .cmp-footer { position:fixed !important; bottom:0 !important; left:10mm !important; right:10mm !important; background:white !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; } }';
 
   const TABS = [
     {id:'list',    label:'📋 매물 목록'},
