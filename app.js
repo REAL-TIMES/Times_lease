@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.8.0';
+const APP_VERSION = 'v1.8.1';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -555,8 +555,8 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
   return (
     <>
       {chunks.map((chunk, ci) => (
-        <div key={ci} className="print-only"
-          style={{pageBreakBefore:ci>0?'always':'auto',breakBefore:ci>0?'page':'auto'}}>
+        <div key={ci}
+          style={{pageBreakBefore:ci>0?'always':'auto',breakBefore:ci>0?'page':'auto',marginBottom:'32px'}}>
 
           <div style={{borderBottom:'1pt solid #c9a84c',paddingBottom:'8pt',marginBottom:'12pt',display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
             <div>
@@ -623,28 +623,22 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                 });
               })()}
             </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={chunk.length+1} style={{padding:'0'}}>
-                  <div style={{marginTop:'8pt',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
-                      {logoSrc && <img src={logoSrc} style={{height:'20pt',objectFit:'contain'}} />}
-                      {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
-                      {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
-                    </span>
-                    <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
-                      {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
-                      {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            </tfoot>
           </table>
+          <div style={{marginTop:'8pt',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
+              {logoSrc && <img src={logoSrc} style={{height:'20pt',objectFit:'contain'}} />}
+              {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
+              {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
+            </span>
+            <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
+              {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
+              {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
+            </span>
+          </div>
         </div>
       ))}
 
-      <div className="screen-only" style={{overflowX:'auto'}}>
+      <div className="no-print" style={{overflowX:'auto',marginTop:'24px'}}>
         <table style={{borderCollapse:'collapse',minWidth:'500px',fontSize:'12px',borderTop:'2px solid #c9a84c'}}>
           <thead>
             <tr>
