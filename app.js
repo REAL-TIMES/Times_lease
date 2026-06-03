@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.8.8';
+const APP_VERSION = 'v1.8.9';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -709,7 +709,7 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 리포트 카드 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc, kakaoKey, isFirst }) {
+function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName, agentPhone, logoSrc, isFirst }) {
   const noc    = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
                  ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
   const totMon = n(ls.rent)+n(ls.mgmtFee);
@@ -791,8 +791,8 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
           <div style={{width:'260px',flexShrink:0,overflow:'hidden',background:'#f0ede6',border:'1px solid #e0dcd4',minHeight:'180px',display:'flex',alignItems:'stretch'}}>
             {(ls.photo||ls._photo)
               ? <img src={ls.photo||ls._photo} style={{width:'100%',objectFit:'cover',display:'block'}} />
-              : (ls.address && kakaoKey)
-                ? <KakaoMapView address={ls.address} kakaoKey={kakaoKey} />
+              : ls.address
+                ? <KakaoMapView address={ls.address} />
                 : <div style={{width:'100%',flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#f5f2eb',gap:'10px',padding:'20px 0'}}>
                     {logoSrc
                       ? <img src={logoSrc} style={{maxWidth:'70%',maxHeight:'60px',objectFit:'contain',opacity:.55}} />
@@ -910,12 +910,12 @@ function LReportCard({ ls, reportTitle, reportDate, bizName, bizAddr, agentName,
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 카카오맵 뷰 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function KakaoMapView({ address, kakaoKey }) {
+function KakaoMapView({ address }) {
   var [tileInfo, setTileInfo] = useState(null);
   var [mapErr,   setMapErr]   = useState(false);
 
   useEffect(function() {
-    if (!address || !kakaoKey) return;
+    if (!address) return;
     setTileInfo(null); setMapErr(false);
     fetch('/api/geocode?address=' + encodeURIComponent(address))
       .then(function(r) { return r.json(); })
@@ -943,7 +943,7 @@ function KakaoMapView({ address, kakaoKey }) {
         setTileInfo({ tiles: tiles3, px: px, py: py });
       })
       .catch(function() { setMapErr(true); });
-  }, [address, kakaoKey]);
+  }, [address]);
 
   if (!tileInfo && !mapErr) {
     return <div style={{width:'260px',height:'195px',background:'#f0ede6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',color:'#aaa'}}>지도 로딩 중...</div>;
@@ -1026,16 +1026,6 @@ function InfoPanel({ info, setInfo, onDisconnect }) {
           {inp('담당자', 'agentName', '성재윤')}
           {inp('연락처', 'agentPhone', '010-6655-5445')}
           <div style={{gridColumn:'1/-1'}}>
-            <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>카카오맵 API 키 (리포트 지도 표시)</div>
-            <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
-              <input value={info.kakaoKey||''} placeholder="카카오 JavaScript 앱 키 (예: e9bdfdddb8c0...)"
-                type="text" onChange={e=>f('kakaoKey',e.target.value.trim())}
-                style={{flex:1,fontSize:'12px',padding:'6px 8px',border:'1px solid #e0dcd4',fontFamily:'monospace'}} />
-            </div>
-            {info.kakaoKey && <div style={{fontSize:'10px',color:'#27ae60',marginTop:'2px'}}>✓ 키 입력됨 ({info.kakaoKey.length}자)</div>}
-            {!info.kakaoKey && <div style={{fontSize:'10px',color:'#e07070',marginTop:'2px'}}>키를 입력하면 리포트에 지도가 표시됩니다</div>}
-          </div>
-          <div style={{gridColumn:'1/-1'}}>
             <div style={{fontSize:'10px',color:'#888',marginBottom:'2px'}}>로고 이미지</div>
             <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
               {info.logoSrc && <img src={info.logoSrc} style={{height:'28px',objectFit:'contain',border:'1px solid #e0dcd4'}} />}
@@ -1074,7 +1064,7 @@ function App() {
   const [delBusy,   setDelBusy]    = useState(false);
   const [info,      setInfo]      = useState(() => ({
     bizName:'타임즈부동산중개', bizAddr:'서울특별시 서초구 반포동 반포프라자',
-    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'', kakaoKey:'',
+    agentName:'성재윤', agentPhone:'010-6655-5445', logoSrc:'',
     ...loadInfo()
   }));
   const [reportTitle, setRT] = useState('');
@@ -1458,7 +1448,7 @@ function App() {
                   <LReportCard key={l.id} ls={l} isFirst={i===0}
                     reportTitle={reportTitle} reportDate={reportDate}
                     bizName={info.bizName} bizAddr={info.bizAddr}
-                    agentName={info.agentName} agentPhone={info.agentPhone} logoSrc={info.logoSrc} kakaoKey={info.kakaoKey} />
+                    agentName={info.agentName} agentPhone={info.agentPhone} logoSrc={info.logoSrc} />
                 ))}
           </div>
         )}
