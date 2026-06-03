@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.8.9';
+const APP_VERSION = 'v1.9.0';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -1277,7 +1277,7 @@ function App() {
           busy={delBusy} />
       )}
 
-      <header className="no-print" style={{background:'#0d1b2a',padding:'12px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <header className="no-print" style={{background:'#0d1b2a',padding:'12px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100,boxShadow:'0 1px 3px rgba(0,0,0,0.08)'}}>
         <div>
           <div style={{fontSize:'10px',letterSpacing:'.22em',color:'#c9a84c',marginBottom:'2px'}}>TIMES REAL ESTATE</div>
           <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
@@ -1303,7 +1303,7 @@ function App() {
         </div>
       </header>
 
-      <div className="no-print" style={{background:'#ede9e1',borderBottom:'1px solid #d8d4cc',padding:'0 24px'}}>
+      <div className="no-print" style={{background:'#ede9e1',borderBottom:'1px solid #d8d4cc',padding:'0 24px',position:'sticky',top:'64px',zIndex:99,boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',maxWidth:'1200px',margin:'0 auto'}}>
           <div style={{display:'flex'}}>
             {TABS.map(t=>(
