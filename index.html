@@ -26,58 +26,10 @@
       .screen-only { display:none !important; }
       body { background:white; }
     }
-    #boot-screen {
-      position:fixed; inset:0; background:#0d1b2a;
-      display:flex; align-items:center; justify-content:center;
-      flex-direction:column; gap:16px; z-index:9999; transition:opacity .4s;
-    }
-    #boot-screen.fade-out { opacity:0; pointer-events:none; }
-    #boot-logo  { font-family:'Cormorant Garamond',serif; font-size:13px; letter-spacing:.35em; color:#c9a84c; }
-    #boot-title { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:600; color:white; }
-    #boot-msg   { font-size:12px; color:#9aacbe; letter-spacing:.06em; margin-top:8px; }
   </style>
 </head>
 <body>
-
-<div id="boot-screen">
-  <div id="boot-logo">TIMES REAL ESTATE</div>
-  <div id="boot-title">임대 매물 관리</div>
-  <div id="boot-msg">연결 중…</div>
-</div>
-
-<div id="root"></div>
-
-<!-- 1단계: autoConnect로 localStorage 저장 -->
-<script>
-window.__appReady = false;
-var STO_CRED = 'times-lease-sb';
-
-fetch('/api/config')
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(d.url && d.key){
-      localStorage.setItem(STO_CRED, JSON.stringify({url:d.url, key:d.key}));
-      document.getElementById('boot-msg').textContent = '연결 완료';
-    }
-  })
-  .catch(function(){})
-  .finally(function(){
-    // 2단계: 저장 완료 후 app.js 로드
-    var s = document.createElement('script');
-    s.type = 'text/babel';
-    s.src = '/app.js';
-    document.head.appendChild(s);
-    setTimeout(function(){
-      Babel.transformScriptTags();
-    }, 100);
-    // 3단계: 부팅화면 제거
-    setTimeout(function(){
-      var b = document.getElementById('boot-screen');
-      b.classList.add('fade-out');
-      setTimeout(function(){ b.style.display='none'; }, 420);
-    }, 1500);
-  });
-</script>
-
+  <div id="root"></div>
+  <script type="text/babel" src="./app.js"></script>
 </body>
 </html>
