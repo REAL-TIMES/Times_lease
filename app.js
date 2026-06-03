@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.8.6';
+const APP_VERSION = 'v1.8.7';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -1266,7 +1266,7 @@ function App() {
 
   const printCSS = view==='report'
     ? '@media print { @page { size:A4 portrait !important; margin:10mm 12mm 18mm; } .report-card { page-break-after:always; break-after:page; } }'
-    : '@media print { @page { size:A4 landscape !important; margin:10mm 10mm 14mm; } .print-compare-wrap { page-break-inside:avoid; break-inside:avoid; } .cmp-screen-footer { display:none !important; } }';
+    : '@media print { @page { size:A4 landscape !important; margin:8mm 10mm 8mm; } .print-compare-wrap { page-break-inside:avoid; break-inside:avoid; } .cmp-screen-footer { display:none !important; } .print-compare-wrap td { padding-top:3pt !important; padding-bottom:3pt !important; } }';
 
   const TABS = [
     {id:'list',    label:'📋 매물 목록'},
