@@ -569,7 +569,6 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
             </div>
           </div>
 
-          <div style={{pageBreakInside:'avoid',breakInside:'avoid'}}>
           <table style={{borderCollapse:'collapse',tableLayout:'fixed',width:chunk.length===CHUNK?'100%':(parseInt(labelColW)+chunk.length*parseInt(dataColW))+'pt',maxWidth:'100%'}}>
             <colgroup>
               <col style={{width:labelColW}} />
@@ -624,20 +623,24 @@ function LCompare({ listings, reportTitle, reportDate, bizName, bizAddr, agentNa
                 });
               })()}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={chunk.length+1} style={{padding:'0'}}>
+                  <div style={{marginTop:'8pt',borderTop:'1pt solid #c9a84c',paddingTop:'5pt',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
+                      {logoSrc && <img src={logoSrc} style={{height:'20pt',objectFit:'contain'}} />}
+                      {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
+                      {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
+                    </span>
+                    <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
+                      {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
+                      {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
           </table>
-
-          <div style={{marginTop:'10pt',borderTop:'1pt solid #c9a84c',paddingTop:'6pt',display:'flex',justifyContent:'space-between',alignItems:'center',pageBreakInside:'avoid',breakInside:'avoid',pageBreakBefore:'avoid',breakBefore:'avoid'}}>
-            <span style={{display:'flex',alignItems:'center',gap:'8pt'}}>
-              {logoSrc && <img src={logoSrc} style={{height:'22pt',objectFit:'contain'}} />}
-              {bizName && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{bizName}</strong>}
-              {bizAddr && <span style={{color:'#888',fontSize:'8pt',marginLeft:'8pt'}}>{bizAddr}</span>}
-            </span>
-            <span style={{display:'flex',alignItems:'center',gap:'10pt'}}>
-              {agentName  && <strong style={{color:'#0d1b2a',fontSize:'10pt',letterSpacing:'.02em'}}>{agentName}</strong>}
-              {agentPhone && <span style={{color:'#555',fontSize:'9pt'}}>{agentPhone}</span>}
-            </span>
-          </div>
-          </div>
         </div>
       ))}
 
