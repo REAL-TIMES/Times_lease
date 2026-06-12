@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.9.0';
+const APP_VERSION = 'v1.10.0';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -83,6 +83,33 @@ const shortAddr = addr => {
     }
   }
   return addr;
+};
+
+// 주소에서 행정동 추출 (예: "서울특별시 서초구 반포동 123-45" → "반포동")
+const extractDong = addr => {
+  if (!addr) return null;
+  var m = addr.match(/([가-힣]+(?:동|가))(?:\s|\d|$)/);
+  return m ? m[1] : null;
+};
+
+// 정렬 옵션
+const SORT_OPTIONS = [
+  { key:'sortOrder',    label:'드래그 순서',    getter:l => l.sortOrder !== undefined ? l.sortOrder : (l.createdAt||0), type:'num' },
+  { key:'createdAt',    label:'작성일',          getter:l => l.createdAt || 0, type:'num' },
+  { key:'exclusivePy',  label:'전용면적',        getter:l => parseFloat(l.exclusivePy) || 0, type:'num' },
+  { key:'monthly',      label:'월 합계',         getter:l => (parseFloat(l.rent)||0) + (parseFloat(l.mgmtFee)||0), type:'num' },
+  { key:'noc',          label:'NOC (전용평)',    getter:l => { var py=parseFloat(l.exclusivePy); var m=(parseFloat(l.rent)||0)+(parseFloat(l.mgmtFee)||0); return py>0 ? m/py : 0; }, type:'num' },
+  { key:'deposit',      label:'보증금',          getter:l => parseFloat(l.deposit) || 0, type:'num' },
+  { key:'rent',         label:'임대료/월',       getter:l => parseFloat(l.rent) || 0, type:'num' },
+  { key:'useAprDate',   label:'사용승인일',      getter:l => l.useAprDate || '', type:'str' },
+  { key:'buildingName', label:'건물명 (가나다)', getter:l => l.buildingName || '', type:'str' },
+];
+
+const INIT_FILTER = {
+  keyword:'', areaMin:'', areaMax:'',
+  depositMin:'', depositMax:'',
+  rentMin:'', rentMax:'',
+  dongs:[]
 };
 
 // ── 비교표 컬럼 v1.8.0 ──
@@ -392,18 +419,20 @@ function ListingForm({ init, onSave, onClose }) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 매물 카드 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop, isDragging }) {
+function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop, isDragging, dragEnabled }) {
   const noc = ls.exclusivePy && (n(ls.rent)||n(ls.mgmtFee))
     ? Math.round((n(ls.rent)+n(ls.mgmtFee))/n(ls.exclusivePy)) : null;
 
+  const createdStr = ls.createdAt ? new Date(ls.createdAt).toISOString().slice(0,10).replace(/-/g,'.') : null;
+
   return (
     <div className="pci"
-      draggable={true}
-      onDragStart={onDragStart}
-      onDragOver={e=>{e.preventDefault();onDragOver();}}
-      onDrop={onDrop}
+      draggable={dragEnabled !== false}
+      onDragStart={dragEnabled !== false ? onDragStart : undefined}
+      onDragOver={dragEnabled !== false ? (e=>{e.preventDefault();onDragOver();}) : undefined}
+      onDrop={dragEnabled !== false ? onDrop : undefined}
       style={{background:'white',border:'1px solid #e0dcd4',position:'relative',overflow:'hidden',
-        opacity:isDragging?0.4:1,cursor:'grab',transition:'opacity .15s'}}>
+        opacity:isDragging?0.4:1,cursor:dragEnabled !== false ?'grab':'default',transition:'opacity .15s'}}>
       <div style={{position:'absolute',left:0,top:0,bottom:0,width:'3px',background:ls.printSel?'#c9a84c':'#e0dcd4'}} />
       <div style={{padding:'12px 12px 8px 15px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'8px'}}>
@@ -476,11 +505,121 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
         </div>
       </div>
 
-      <div style={{borderTop:'1px solid #f0ede6',padding:'6px 12px',display:'flex',gap:'6px',justifyContent:'flex-end',background:'#fafaf8'}}>
-        <button onClick={onEdit}
-          style={{fontSize:'10px',padding:'3px 10px',background:'none',border:'1px solid #c9a84c',color:'#c9a84c',cursor:'pointer'}}>편집</button>
-        <button onClick={onDelete}
-          style={{fontSize:'10px',padding:'3px 10px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>삭제</button>
+      <div style={{borderTop:'1px solid #f0ede6',padding:'6px 12px',display:'flex',gap:'6px',justifyContent:'space-between',alignItems:'center',background:'#fafaf8'}}>
+        <span style={{fontSize:'9px',color:'#bbb'}}>{createdStr ? '등록 '+createdStr : ''}</span>
+        <span style={{display:'flex',gap:'6px'}}>
+          <button onClick={onEdit}
+            style={{fontSize:'10px',padding:'3px 10px',background:'none',border:'1px solid #c9a84c',color:'#c9a84c',cursor:'pointer'}}>편집</button>
+          <button onClick={onDelete}
+            style={{fontSize:'10px',padding:'3px 10px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer'}}>삭제</button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 필터 패널 v1.10.0 ──
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function FilterPanel({ draft, setDraft, availableDongs, areaOptions, onApply, onReset, onClose }) {
+  const set = (k,v) => setDraft(p => Object.assign({}, p, { [k]: v }));
+  const toggleDong = (d) => {
+    var arr = draft.dongs || [];
+    setDraft(Object.assign({}, draft, {
+      dongs: arr.indexOf(d) >= 0 ? arr.filter(x=>x!==d) : arr.concat([d])
+    }));
+  };
+
+  const lblS  = { fontSize:'11px', color:'#666', fontWeight:600, marginBottom:'4px', letterSpacing:'.04em' };
+  const inpS  = { fontSize:'12px', padding:'5px 8px', border:'1px solid #d8d4cc', background:'white', fontFamily:'inherit' };
+  const rowS  = { display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap' };
+
+  return (
+    <div style={{background:'white',border:'1px solid #e0dcd4',borderRadius:'2px',padding:'14px 16px',marginBottom:'16px',boxShadow:'0 2px 4px rgba(0,0,0,0.04)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingBottom:'8px',borderBottom:'1px solid #f0ede6'}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'15px',fontWeight:600,color:'#0d1b2a'}}>🔍 검색 / 필터</div>
+        <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',fontSize:'18px',color:'#888'}}>×</button>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px 20px',marginBottom:'12px'}}>
+
+        {/* 키워드 검색 (전체 너비) */}
+        <div style={{gridColumn:'1 / -1'}}>
+          <div style={lblS}>건물명 / 주소 검색</div>
+          <input value={draft.keyword} onChange={e=>set('keyword',e.target.value)}
+            placeholder="예) 반포파인, 반포동"
+            style={Object.assign({}, inpS, {width:'100%'})} />
+        </div>
+
+        {/* 전용면적 */}
+        <div>
+          <div style={lblS}>전용면적 (평)</div>
+          <div style={rowS}>
+            <select value={draft.areaMin} onChange={e=>set('areaMin',e.target.value)} style={Object.assign({}, inpS, {flex:1,cursor:'pointer'})}>
+              <option value="">최저 없음</option>
+              {areaOptions.filter(function(v){ return draft.areaMax===''||v<parseFloat(draft.areaMax); }).map(function(v){
+                return <option key={v} value={v}>{v}평</option>;
+              })}
+            </select>
+            <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
+            <select value={draft.areaMax} onChange={e=>set('areaMax',e.target.value)} style={Object.assign({}, inpS, {flex:1,cursor:'pointer'})}>
+              <option value="">최대 없음</option>
+              {areaOptions.filter(function(v){ return draft.areaMin===''||v>parseFloat(draft.areaMin); }).map(function(v){
+                return <option key={v} value={v}>{v}평</option>;
+              })}
+            </select>
+          </div>
+        </div>
+
+        {/* 보증금 */}
+        <div>
+          <div style={lblS}>보증금 (만원)</div>
+          <div style={rowS}>
+            <input type="number" value={draft.depositMin} onChange={e=>set('depositMin',e.target.value)} placeholder="최소" style={Object.assign({}, inpS, {flex:1})} />
+            <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
+            <input type="number" value={draft.depositMax} onChange={e=>set('depositMax',e.target.value)} placeholder="최대" style={Object.assign({}, inpS, {flex:1})} />
+          </div>
+        </div>
+
+        {/* 임대료 */}
+        <div>
+          <div style={lblS}>임대료/월 (만원)</div>
+          <div style={rowS}>
+            <input type="number" value={draft.rentMin} onChange={e=>set('rentMin',e.target.value)} placeholder="최소" style={Object.assign({}, inpS, {flex:1})} />
+            <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
+            <input type="number" value={draft.rentMax} onChange={e=>set('rentMax',e.target.value)} placeholder="최대" style={Object.assign({}, inpS, {flex:1})} />
+          </div>
+        </div>
+
+        {/* 행정동 */}
+        <div>
+          <div style={lblS}>행정동 ({(draft.dongs||[]).length}개 선택)</div>
+          {availableDongs.length === 0 ? (
+            <div style={{fontSize:'11px',color:'#aaa',padding:'5px 0'}}>주소가 등록된 매물이 없습니다</div>
+          ) : (
+            <div style={{display:'flex',flexWrap:'wrap',gap:'4px'}}>
+              {availableDongs.map(function(d){
+                var on = (draft.dongs||[]).indexOf(d) >= 0;
+                return (
+                  <button key={d} onClick={()=>toggleDong(d)}
+                    style={{padding:'3px 10px',fontSize:'11px',border:'1px solid '+(on?'#c9a84c':'#ddd'),background:on?'#c9a84c':'white',color:on?'white':'#555',cursor:'pointer',fontFamily:'inherit',borderRadius:'12px'}}>
+                    {on?'✓ ':''}{d}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* 버튼 영역 */}
+      <div style={{display:'flex',justifyContent:'flex-end',gap:'8px',paddingTop:'10px',borderTop:'1px solid #f0ede6'}}>
+        <button onClick={onReset}
+          style={{padding:'7px 16px',background:'white',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontSize:'12px',fontFamily:'inherit'}}>✕ 초기화</button>
+        <button onClick={onApply}
+          style={{padding:'7px 22px',background:'#0d1b2a',color:'#c9a84c',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit',fontWeight:600}}>적용</button>
       </div>
     </div>
   );
@@ -1056,10 +1195,11 @@ function App() {
   const [loadErr,   setLoadErr]   = useState('');
   const [dbReady,   setDbReady]   = useState(false);
   const [dragId,    setDragId]    = useState(null);
-  const [areaMin,     setAreaMin]     = useState('');
-  const [areaMax,     setAreaMax]     = useState('');
-  const [appliedMin,  setAppliedMin]  = useState('');
-  const [appliedMax,  setAppliedMax]  = useState('');
+  const [filterDraft,   setFilterDraft]   = useState(INIT_FILTER);
+  const [filterApplied, setFilterApplied] = useState(INIT_FILTER);
+  const [showFilter,    setShowFilter]    = useState(false);
+  const [sortBy,        setSortBy]        = useState('sortOrder');
+  const [sortDir,       setSortDir]       = useState('asc');
   const [confirmDlg, setConfirmDlg] = useState(null);
   const [delBusy,   setDelBusy]    = useState(false);
   const [info,      setInfo]      = useState(() => ({
@@ -1068,7 +1208,7 @@ function App() {
     ...loadInfo()
   }));
   const [reportTitle, setRT] = useState('');
-  const reportDate = new Date().toISOString().slice(0,10);
+  const [reportDate, setReportDate] = useState(new Date().toISOString().slice(0,10));
 
   // ── 초기 연결 시도 ──
   // /api/config 로 환경변수 키를 먼저 받아 localStorage 저장 후 연결
@@ -1237,16 +1377,69 @@ function App() {
     return opts;
   })();
 
-  // ★ 면적 필터 적용 목록
+  // ★ 필터 적용 매물 목록
   var filteredListings = listings.filter(function(l){
+    var f = filterApplied;
+    // 키워드 검색 (건물명 + 주소)
+    if (f.keyword) {
+      var kw = f.keyword.toLowerCase();
+      var bn = (l.buildingName||'').toLowerCase();
+      var ad = (l.address||'').toLowerCase();
+      if (bn.indexOf(kw) < 0 && ad.indexOf(kw) < 0) return false;
+    }
+    // 전용면적
     var py = parseFloat(l.exclusivePy);
-    if (appliedMin !== '' && !isNaN(py) && py < parseFloat(appliedMin)) return false;
-    if (appliedMax !== '' && !isNaN(py) && py > parseFloat(appliedMax)) return false;
+    if (f.areaMin !== '' && !isNaN(py) && py < parseFloat(f.areaMin)) return false;
+    if (f.areaMax !== '' && !isNaN(py) && py > parseFloat(f.areaMax)) return false;
+    // 보증금
+    var dep = parseFloat(l.deposit);
+    if (f.depositMin !== '' && !isNaN(dep) && dep < parseFloat(f.depositMin)) return false;
+    if (f.depositMax !== '' && !isNaN(dep) && dep > parseFloat(f.depositMax)) return false;
+    // 월세
+    var rt = parseFloat(l.rent);
+    if (f.rentMin !== '' && !isNaN(rt) && rt < parseFloat(f.rentMin)) return false;
+    if (f.rentMax !== '' && !isNaN(rt) && rt > parseFloat(f.rentMax)) return false;
+    // 행정동
+    if (f.dongs && f.dongs.length > 0) {
+      var dong = extractDong(l.address);
+      if (!dong || f.dongs.indexOf(dong) < 0) return false;
+    }
     return true;
+  });
+
+  // ★ 정렬 적용
+  var sortOpt = SORT_OPTIONS.filter(function(o){ return o.key===sortBy; })[0] || SORT_OPTIONS[0];
+  filteredListings = filteredListings.slice().sort(function(a,b){
+    var va = sortOpt.getter(a);
+    var vb = sortOpt.getter(b);
+    if (sortOpt.type === 'str') {
+      var cmp = String(va).localeCompare(String(vb), 'ko');
+      return sortDir === 'asc' ? cmp : -cmp;
+    }
+    return sortDir === 'asc' ? va - vb : vb - va;
   });
 
   // ★ 필터 내 선택 건수
   var filteredSelCount = filteredListings.filter(function(l){ return l.printSel; }).length;
+
+  // ★ 매물에 등록된 행정동 목록 (체크박스용)
+  var availableDongs = (function(){
+    var s = {};
+    listings.forEach(function(l){
+      var d = extractDong(l.address);
+      if (d) s[d] = true;
+    });
+    return Object.keys(s).sort();
+  })();
+
+  // ★ 필터 적용 여부
+  var hasActiveFilter = (
+    filterApplied.keyword !== '' ||
+    filterApplied.areaMin !== '' || filterApplied.areaMax !== '' ||
+    filterApplied.depositMin !== '' || filterApplied.depositMax !== '' ||
+    filterApplied.rentMin !== '' || filterApplied.rentMax !== '' ||
+    (filterApplied.dongs && filterApplied.dongs.length > 0)
+  );
 
   // Supabase 미연결
   if (!dbReady && !loading) {
@@ -1291,10 +1484,9 @@ function App() {
           {!loading && !loadErr && (
             <span style={{fontSize:'12px',color:'#9aacbe'}}>
               ☁ Supabase 연결됨
-              {/* ★ 필터 적용 중이면 필터 내 선택 건수 표시, 아니면 전체 선택 건수 */}
-              {(appliedMin !== '' || appliedMax !== '')
-                ? <span> &nbsp;·&nbsp; 필터 내 선택 {filteredSelCount}건 / 전체 선택 {selCount}건</span>
-                : <span> &nbsp;·&nbsp; 선택 {selCount}건</span>
+              {hasActiveFilter
+                ? <span> &nbsp;·&nbsp; 필터 {filteredListings.length}건 / 전체 {listings.length}건 · 선택 {filteredSelCount}건</span>
+                : <span> &nbsp;·&nbsp; 전체 {listings.length}건 · 선택 {selCount}건</span>
               }
             </span>
           )}
@@ -1317,41 +1509,34 @@ function App() {
           </div>
           <div style={{display:'flex',gap:'8px',alignItems:'center',padding:'8px 0'}}>
             {view!=='list' && (
-              <input value={reportTitle} onChange={e=>setRT(e.target.value)}
-                placeholder="보고서 제목 (고객명)"
-                style={{fontSize:'14px',padding:'6px 12px',border:'1px solid #ccc8c0',width:'220px'}} />
+              <>
+                <input value={reportTitle} onChange={e=>setRT(e.target.value)}
+                  placeholder="보고서 제목 (고객명)"
+                  style={{fontSize:'14px',padding:'6px 12px',border:'1px solid #ccc8c0',width:'220px',fontFamily:'inherit'}} />
+                <input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)}
+                  style={{fontSize:'14px',padding:'6px 10px',border:'1px solid #ccc8c0',fontFamily:'inherit'}} />
+              </>
             )}
             {view==='list' && (
               <>
-                {/* 전용면적 필터 */}
-                <div style={{display:'flex',alignItems:'center',gap:'4px',fontSize:'13px'}}>
-                  <select value={areaMin} onChange={e=>setAreaMin(e.target.value)}
-                    style={{padding:'6px 8px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit'}}>
-                    <option value="">최저 없음</option>
-                    {areaOptions.filter(function(v){ return areaMax===''||v<parseFloat(areaMax); }).map(function(v){
-                      return <option key={v} value={v}>{v}평</option>;
-                    })}
-                  </select>
-                  <span style={{color:'#aaa',fontSize:'12px',flexShrink:0}}>~ 이상</span>
-                  <select value={areaMax} onChange={e=>setAreaMax(e.target.value)}
-                    style={{padding:'6px 8px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit'}}>
-                    <option value="">최대 없음</option>
-                    {areaOptions.filter(function(v){ return areaMin===''||v>parseFloat(areaMin); }).map(function(v){
-                      return <option key={v} value={v}>{v}평</option>;
-                    })}
-                  </select>
-                  <span style={{color:'#aaa',fontSize:'12px',flexShrink:0}}>이하</span>
-                  <button
-                    onClick={function(){setAppliedMin(areaMin);setAppliedMax(areaMax);}}
-                    style={{padding:'6px 14px',fontSize:'13px',background:'#0d1b2a',color:'#c9a84c',border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:600,flexShrink:0}}>
-                    검색
-                  </button>
-                  {(appliedMin!==''||appliedMax!=='') && (
-                    <button onClick={function(){setAreaMin('');setAreaMax('');setAppliedMin('');setAppliedMax('');}}
-                      style={{padding:'5px 8px',fontSize:'11px',background:'none',border:'1px solid #ddd',color:'#888',cursor:'pointer',fontFamily:'inherit',flexShrink:0}}>✕ 초기화</button>
-                  )}
-                </div>
-                {/* ★ 전체선택/선택해제: filteredListings 기준으로만 동작 */}
+                {/* 검색/필터 토글 버튼 */}
+                <button onClick={()=>setShowFilter(!showFilter)}
+                  style={{padding:'6px 14px',fontSize:'13px',background:hasActiveFilter?'#0d1b2a':'white',color:hasActiveFilter?'#c9a84c':'#333',border:'1px solid '+(hasActiveFilter?'#0d1b2a':'#bbb'),cursor:'pointer',fontFamily:'inherit',fontWeight:hasActiveFilter?700:400}}>
+                  🔍 검색/필터 {showFilter?'▲':'▼'}{hasActiveFilter?' ●':''}
+                </button>
+                {/* 정렬 */}
+                <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+                  style={{padding:'6px 8px',fontSize:'13px',border:'1px solid #bbb',background:'white',cursor:'pointer',fontFamily:'inherit'}}>
+                  {SORT_OPTIONS.map(function(o){
+                    return <option key={o.key} value={o.key}>정렬: {o.label}</option>;
+                  })}
+                </select>
+                <button onClick={()=>setSortDir(sortDir==='asc'?'desc':'asc')}
+                  title={sortDir==='asc'?'오름차순':'내림차순'}
+                  style={{padding:'6px 10px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit',minWidth:'36px'}}>
+                  {sortDir==='asc'?'↑':'↓'}
+                </button>
+                {/* 전체선택/선택해제 */}
                 <button onClick={()=>{
                     var ids=new Set(filteredListings.map(function(l){return l.id;}));
                     setListings(function(p){return p.map(function(x){return ids.has(x.id)?{...x,printSel:true}:x;});});
@@ -1362,7 +1547,6 @@ function App() {
                     setListings(function(p){return p.map(function(x){return ids.has(x.id)?{...x,printSel:false}:x;});});
                   }}
                   style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #bbb',cursor:'pointer',fontFamily:'inherit'}}>선택 해제</button>
-                {/* ★ 선택 삭제: filteredListings 내 선택 건수 기준 */}
                 {filteredSelCount > 0 && (
                   <button onClick={onBulkDelete}
                     style={{padding:'6px 14px',fontSize:'13px',background:'white',border:'1px solid #e07070',color:'#c0392b',cursor:'pointer',fontFamily:'inherit',fontWeight:600}}>
@@ -1402,13 +1586,23 @@ function App() {
 
         {!loading && view==='list' && (
           <>
+            {showFilter && (
+              <FilterPanel
+                draft={filterDraft} setDraft={setFilterDraft}
+                availableDongs={availableDongs}
+                areaOptions={areaOptions}
+                onApply={()=>{setFilterApplied(filterDraft);}}
+                onReset={()=>{setFilterDraft(INIT_FILTER);setFilterApplied(INIT_FILTER);}}
+                onClose={()=>setShowFilter(false)}
+              />
+            )}
             {filteredListings.length===0 ? (
               <div style={{textAlign:'center',padding:'80px 0',color:'#bbb'}}>
                 <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'24px',marginBottom:'10px',color:'#c9a84c'}}>
                   {listings.length===0 ? '등록된 매물이 없습니다' : '검색 결과가 없습니다'}
                 </div>
                 <div style={{fontSize:'12px',marginBottom:'20px'}}>
-                  {listings.length===0 ? '+ 새 매물 등록 버튼을 눌러 매물을 추가하세요' : '다른 면적 조건을 선택해보세요'}
+                  {listings.length===0 ? '+ 새 매물 등록 버튼을 눌러 매물을 추가하세요' : '필터 조건을 변경해보세요'}
                 </div>
                 <button onClick={()=>{setEditing(blank());setShowForm(true);}}
                   style={{padding:'10px 24px',background:'#c9a84c',color:'white',border:'none',cursor:'pointer',fontSize:'13px',fontFamily:'inherit'}}>+ 첫 매물 등록</button>
@@ -1416,7 +1610,7 @@ function App() {
             ) : (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'16px'}}>
                 {filteredListings.map(ls=>(
-                  <LCard key={ls.id} ls={ls}
+                  <LCard key={ls.id} ls={ls} dragEnabled={sortBy==='sortOrder'}
                     onEdit={()=>{setEditing(ls);setShowForm(true);}}
                     onDelete={()=>onDelete(ls.id, ls.buildingName)}
                     onToggle={()=>onToggle(ls.id)}
