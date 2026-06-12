@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.10.0';
+const APP_VERSION = 'v1.10.2';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -522,13 +522,19 @@ function LCard({ ls, onEdit, onDelete, onToggle, onDragStart, onDragOver, onDrop
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ── 필터 패널 v1.10.0 ──
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function FilterPanel({ draft, setDraft, availableDongs, areaOptions, onApply, onReset, onClose }) {
+function FilterPanel({ draft, setDraft, setImmediate, availableDongs, areaOptions, onApply, onReset, onClose }) {
   const set = (k,v) => setDraft(p => Object.assign({}, p, { [k]: v }));
+  // Enter 키 → 즉시 적용
+  const onEnter = (e) => { if (e.key === 'Enter') onApply(); };
+  // 즉시 적용용 (전용면적·행정동)
+  const setNow = (k,v) => {
+    var newDraft = Object.assign({}, draft, { [k]: v });
+    setImmediate(newDraft);
+  };
   const toggleDong = (d) => {
     var arr = draft.dongs || [];
-    setDraft(Object.assign({}, draft, {
-      dongs: arr.indexOf(d) >= 0 ? arr.filter(x=>x!==d) : arr.concat([d])
-    }));
+    var newDongs = arr.indexOf(d) >= 0 ? arr.filter(x=>x!==d) : arr.concat([d]);
+    setImmediate(Object.assign({}, draft, { dongs: newDongs }));
   };
 
   const lblS  = { fontSize:'11px', color:'#666', fontWeight:600, marginBottom:'4px', letterSpacing:'.04em' };
@@ -548,37 +554,18 @@ function FilterPanel({ draft, setDraft, availableDongs, areaOptions, onApply, on
         <div style={{gridColumn:'1 / -1'}}>
           <div style={lblS}>건물명 / 주소 검색</div>
           <input value={draft.keyword} onChange={e=>set('keyword',e.target.value)}
-            placeholder="예) 반포파인, 반포동"
+            onKeyDown={onEnter}
+            placeholder="예) 반포파인, 반포동 (엔터로 검색)"
             style={Object.assign({}, inpS, {width:'100%'})} />
-        </div>
-
-        {/* 전용면적 */}
-        <div>
-          <div style={lblS}>전용면적 (평)</div>
-          <div style={rowS}>
-            <select value={draft.areaMin} onChange={e=>set('areaMin',e.target.value)} style={Object.assign({}, inpS, {flex:1,cursor:'pointer'})}>
-              <option value="">최저 없음</option>
-              {areaOptions.filter(function(v){ return draft.areaMax===''||v<parseFloat(draft.areaMax); }).map(function(v){
-                return <option key={v} value={v}>{v}평</option>;
-              })}
-            </select>
-            <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
-            <select value={draft.areaMax} onChange={e=>set('areaMax',e.target.value)} style={Object.assign({}, inpS, {flex:1,cursor:'pointer'})}>
-              <option value="">최대 없음</option>
-              {areaOptions.filter(function(v){ return draft.areaMin===''||v>parseFloat(draft.areaMin); }).map(function(v){
-                return <option key={v} value={v}>{v}평</option>;
-              })}
-            </select>
-          </div>
         </div>
 
         {/* 보증금 */}
         <div>
           <div style={lblS}>보증금 (만원)</div>
           <div style={rowS}>
-            <input type="number" value={draft.depositMin} onChange={e=>set('depositMin',e.target.value)} placeholder="최소" style={Object.assign({}, inpS, {flex:1})} />
+            <input type="number" value={draft.depositMin} onChange={e=>set('depositMin',e.target.value)} onKeyDown={onEnter} placeholder="최소" style={Object.assign({}, inpS, {flex:1})} />
             <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
-            <input type="number" value={draft.depositMax} onChange={e=>set('depositMax',e.target.value)} placeholder="최대" style={Object.assign({}, inpS, {flex:1})} />
+            <input type="number" value={draft.depositMax} onChange={e=>set('depositMax',e.target.value)} onKeyDown={onEnter} placeholder="최대" style={Object.assign({}, inpS, {flex:1})} />
           </div>
         </div>
 
@@ -586,9 +573,29 @@ function FilterPanel({ draft, setDraft, availableDongs, areaOptions, onApply, on
         <div>
           <div style={lblS}>임대료/월 (만원)</div>
           <div style={rowS}>
-            <input type="number" value={draft.rentMin} onChange={e=>set('rentMin',e.target.value)} placeholder="최소" style={Object.assign({}, inpS, {flex:1})} />
+            <input type="number" value={draft.rentMin} onChange={e=>set('rentMin',e.target.value)} onKeyDown={onEnter} placeholder="최소" style={Object.assign({}, inpS, {flex:1})} />
             <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
-            <input type="number" value={draft.rentMax} onChange={e=>set('rentMax',e.target.value)} placeholder="최대" style={Object.assign({}, inpS, {flex:1})} />
+            <input type="number" value={draft.rentMax} onChange={e=>set('rentMax',e.target.value)} onKeyDown={onEnter} placeholder="최대" style={Object.assign({}, inpS, {flex:1})} />
+          </div>
+        </div>
+
+        {/* 전용면적 */}
+        <div>
+          <div style={lblS}>전용면적 (평)</div>
+          <div style={rowS}>
+            <select value={draft.areaMin} onChange={e=>setNow('areaMin',e.target.value)} style={Object.assign({}, inpS, {flex:1,cursor:'pointer'})}>
+              <option value="">최저 없음</option>
+              {areaOptions.filter(function(v){ return draft.areaMax===''||v<parseFloat(draft.areaMax); }).map(function(v){
+                return <option key={v} value={v}>{v}평</option>;
+              })}
+            </select>
+            <span style={{color:'#aaa',fontSize:'11px'}}>~</span>
+            <select value={draft.areaMax} onChange={e=>setNow('areaMax',e.target.value)} style={Object.assign({}, inpS, {flex:1,cursor:'pointer'})}>
+              <option value="">최대 없음</option>
+              {areaOptions.filter(function(v){ return draft.areaMin===''||v>parseFloat(draft.areaMin); }).map(function(v){
+                return <option key={v} value={v}>{v}평</option>;
+              })}
+            </select>
           </div>
         </div>
 
@@ -1589,6 +1596,7 @@ function App() {
             {showFilter && (
               <FilterPanel
                 draft={filterDraft} setDraft={setFilterDraft}
+                setImmediate={function(newDraft){ setFilterDraft(newDraft); setFilterApplied(newDraft); }}
                 availableDongs={availableDongs}
                 areaOptions={areaOptions}
                 onApply={()=>{setFilterApplied(filterDraft);}}
