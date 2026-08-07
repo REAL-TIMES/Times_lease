@@ -1,5 +1,5 @@
 // ── TIMES 임대 매물 관리 v1.8.0 (Supabase + 네이버 자동입력) ──
-const APP_VERSION = 'v1.10.2';
+const APP_VERSION = 'v1.10.3';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -1104,15 +1104,16 @@ function KakaoMapView({ address }) {
   var markerT = 97  - 7;
 
   return (
-    <div style={{width:'260px',height:'195px',position:'relative',overflow:'hidden',background:'#e8e4e0'}}>
+    <div style={{width:'260px',height:'195px',position:'relative',overflow:'hidden',background:'#e8e4e0',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}}>
       {tileInfo.tiles.map(function(t, i) {
-        return <div key={i} style={{position:'absolute',width:'256px',height:'256px',
-          left:(offX+t.dx)+'px',top:(offY+t.dy)+'px',
-          backgroundImage:'url('+t.url+')',backgroundSize:'256px 256px'}} />;
+        return <img key={i} src={t.url} alt="" crossOrigin="anonymous" style={{position:'absolute',width:'256px',height:'256px',
+          left:(offX+t.dx)+'px',top:(offY+t.dy)+'px',display:'block',
+          WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}} />;
       })}
       <div style={{position:'absolute',left:markerL+'px',top:markerT+'px',width:'14px',height:'14px',
         borderRadius:'50%',background:'#e74c3c',border:'2px solid white',
-        boxShadow:'0 1px 3px rgba(0,0,0,0.5)',zIndex:10}} />
+        boxShadow:'0 1px 3px rgba(0,0,0,0.5)',zIndex:10,
+        WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'}} />
       <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.4)',
         padding:'3px 6px',fontSize:'9px',color:'white',textAlign:'center',zIndex:10}}>
         {address}
